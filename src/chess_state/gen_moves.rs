@@ -316,6 +316,8 @@ impl ChessState {
     }
 
     pub fn is_square_attacked(&self, attacker: PieceColor, square: usize) -> bool {
+
+        // Check if square is attacked orthogonally by a rook, queen or king
         for offset in PieceType::Rook.offsets() {
             let mut slid = false;
             let mut to = square;
@@ -342,6 +344,7 @@ impl ChessState {
             }
         }
 
+        // Check if square is diagonally attacked by a bishop, queen or king
         for offset in PieceType::Bishop.offsets() {
             let mut slid = false;
             let mut to = square;
@@ -358,7 +361,7 @@ impl ChessState {
                     }) if c == attacker => return true,
                     Some(Piece {
                         c,
-                        t: PieceType::King | PieceType::Pawn,
+                        t: PieceType::King,
                     }) if c == attacker && !slid => return true,
                     Some(_) => break,
                     _ => (),
@@ -368,6 +371,7 @@ impl ChessState {
             }
         }
 
+        // Check if square is attacked by a knight
         for offset in PieceType::Knight.offsets() {
             let to = match with_offset(square, *offset) {
                 Some(n) => n,
@@ -378,6 +382,27 @@ impl ChessState {
                 Some(Piece {
                     c,
                     t: PieceType::Knight,
+                }) if c == attacker => return true,
+                _ => (),
+            }
+        }
+
+        // Check if square is attacked by a pawn
+        let backward = match attacker {
+            PieceColor::White => -10,
+            PieceColor::Black => 10,
+        };
+
+        for offset in [1 as i8, -1] {
+            let to = match with_offset(square, backward + offset) {
+                Some(n) => n,
+                None => continue,
+            };
+
+            match self.pieces[to] {
+                Some(Piece {
+                    c,
+                    t: PieceType::Pawn,
                 }) if c == attacker => return true,
                 _ => (),
             }
