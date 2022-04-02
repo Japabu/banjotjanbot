@@ -30,7 +30,7 @@ impl PieceColor {
     }
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum PieceType {
     Rook,
     Knight,
@@ -40,13 +40,13 @@ pub enum PieceType {
     Pawn,
 }
 
-#[derive(Clone, Copy, Hash, PartialEq, Eq)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 pub struct Piece {
     pub c: PieceColor,
     pub t: PieceType,
 }
 
-#[derive(Clone, Copy, Hash, PartialEq, Eq)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 struct PieceColorArray<T>([T; 2]);
 impl<T> Index<PieceColor> for PieceColorArray<T> {
     type Output = T;
@@ -61,7 +61,7 @@ impl<T> IndexMut<PieceColor> for PieceColorArray<T> {
     }
 }
 
-#[derive(Clone, Copy, Hash, PartialEq, Eq)]
+#[derive(Clone, Copy)]
 pub struct ChessState {
     pieces: [Option<Piece>; 64],
     turn: PieceColor,

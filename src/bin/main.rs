@@ -1,4 +1,4 @@
-use std::{env, io::stdin};
+use std::{env, io::stdin, time::Duration};
 
 use chessai::chess_state::{gen_moves::Move, ChessState};
 
@@ -34,19 +34,15 @@ fn perft(state: ChessState, m: Option<&Move>, depth: u32) -> [u64; 6] {
         })
 }
 
-fn main() {
-    if env::args().len() == 3 {
-        let fen = &env::args().nth(1).unwrap();
-        let depth = env::args().nth(2).unwrap().parse::<u32>().unwrap();
-
-        let chess_state = ChessState::from_fen(fen).unwrap();
-        print!(
-            "{}",
-            chess_state.find_best_move_with_depth(depth).0.unwrap()
-        );
-        return;
+fn fmt_moves(moves: &[Move]) -> String {
+    let mut s = String::new();
+    for m in moves {
+        s.push_str(&format!("{} ", m));
     }
+    s
+}
 
+fn main() {
     println!("Stupid chess engine by Jan");
 
     let mut chess_state = ChessState::default();
@@ -153,13 +149,8 @@ fn main() {
                     }
                 };
 
-                let (m, eval) = chess_state.find_best_move_with_depth(depth);
-
-                println!(
-                    "{} {}",
-                    m.map_or_else(|| String::from("None"), |x| x.to_string()),
-                    eval
-                );
+                let (eval, moves) = chess_state.eval(Some(depth), None);
+                println!("{} {}", eval, fmt_moves(&moves));
             }
             "gotime" => {
                 if args.len() != 1 {
@@ -167,7 +158,7 @@ fn main() {
                     continue;
                 }
 
-                let time: u64 = match args[0].parse() {
+                let seconds: u64 = match args[0].parse() {
                     Ok(time) => time,
                     _ => {
                         println!("Invalid time!");
@@ -175,30 +166,8 @@ fn main() {
                     }
                 };
 
-                let (m, eval, depth) = chess_state.find_best_move_with_time(time);
-
-                println!(
-                    "{} {} {}",
-                    m.map_or_else(|| String::from("None"), |x| x.to_string()),
-                    eval,
-                    depth,
-                );
-            }
-            "eval" => {
-                if args.len() != 1 {
-                    println!("Invalid amount of arguments!");
-                    continue;
-                }
-
-                let depth: u32 = match args[0].parse() {
-                    Ok(depth) => depth,
-                    _ => {
-                        println!("Invalid depth!");
-                        continue;
-                    }
-                };
-
-                println!("{}", chess_state.absolute_eval(depth));
+                let (eval, moves) = chess_state.eval(None, Some(Duration::from_secs(seconds)));
+                println!("{} {}", eval, fmt_moves(&moves));
             }
             _ => println!("Unknown command!"),
         }

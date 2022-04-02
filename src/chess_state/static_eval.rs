@@ -1,4 +1,4 @@
-use super::{ChessState, Piece, PieceColor, PieceType};
+use super::{ChessState, Piece, PieceColor, PieceType, gen_moves::Move};
 
 const PAWN_VALUES: [i32; 64] = [
     0, 0, 0, 0, 0, 0, 0, 0, 50, 50, 50, 50, 50, 50, 50, 50, 10, 10, 20, 30, 30, 20, 10, 10, 5, 5,
@@ -70,12 +70,12 @@ impl Piece {
 impl PieceType {
     fn mat_value(&self) -> i32 {
         match self {
-            PieceType::Queen => 910,
-            PieceType::Rook => 410,
-            PieceType::Knight => 310,
-            PieceType::Bishop => 330,
             PieceType::Pawn => 100,
-            PieceType::King => 0,
+            PieceType::Knight => 320,
+            PieceType::Bishop => 330,
+            PieceType::Rook => 500,
+            PieceType::Queen => 900,
+            PieceType::King => 20000,
         }
     }
 }
@@ -95,7 +95,7 @@ impl ChessState {
         }
         let material_heu = my_material_value - opp_material_value;
 
-        let is_endgame = (my_material_value + opp_material_value) <= 16;
+        let is_endgame = (my_material_value + opp_material_value) <= 1600;
 
         let mut my_positional_value = 0;
         let mut opp_positional_value = 0;
@@ -124,5 +124,33 @@ impl ChessState {
         }
 
         material_heu + positional_heu + king_safety_heu
+    }
+}
+
+impl Move {
+    pub fn static_eval(&self) -> i32 {
+        let mut v = 0;
+
+        if self.capture {
+            v += 10;
+        }
+
+        if self.check {
+            v += 5;
+        }
+
+        if self.castle_king || self.castle_queen {
+            v += 2;
+        }
+
+        v += match self.promote_to {
+            Some(PieceType::Queen) => 15,
+            Some(PieceType::Rook) => 10,
+            Some(PieceType::Bishop) => 9,
+            Some(PieceType::Knight) => 9,
+            _ => 0,
+        };
+
+        -v
     }
 }

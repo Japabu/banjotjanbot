@@ -1,4 +1,4 @@
-use std::fmt::{Display};
+use std::fmt::{Debug, Display};
 
 use super::{gen_moves::Move, si, ChessState, Piece, PieceColor, PieceType};
 

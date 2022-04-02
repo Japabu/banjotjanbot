@@ -171,6 +171,12 @@ pub struct Move {
     pub check: bool,
 }
 
+impl PartialEq for Move {
+    fn eq(&self, other: &Self) -> bool {
+        self.from == other.from && self.to == other.to && self.promote_to == other.promote_to
+    }
+}
+
 impl ChessState {
     fn gen_pawn_moves(&self, from: usize, moves: &mut Vec<Move>) {
         let forward: i8 = match self.turn {
@@ -316,7 +322,6 @@ impl ChessState {
     }
 
     pub fn is_square_attacked(&self, attacker: PieceColor, square: usize) -> bool {
-
         // Check if square is attacked orthogonally by a rook, queen or king
         for offset in PieceType::Rook.offsets() {
             let mut slid = false;
