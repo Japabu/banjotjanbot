@@ -46,7 +46,7 @@ const KING_ENDGAME_VALUES: [i32; 64] = [
 
 impl Piece {
     pub fn pos_value(&self, mut square: usize, is_endgame: bool) -> i32 {
-        if self.c == PieceColor::Black {
+        if self.c == PieceColor::White {
             square = 63 - square;
         }
 
