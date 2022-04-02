@@ -2,15 +2,15 @@ use lazy_static::lazy_static;
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use std::{collections::HashMap, sync::RwLock};
 
-use crate::chess_state::PieceColorArray;
+use crate::chess_state::{PieceColorArray, gen_moves::with_offset};
 
 use super::{gen_moves::Move, ChessState, Piece, PieceColor, PieceType};
 
 const CHECKMATE_EVAL: i32 = -1000000;
 
 const PAWN_VALUES: PieceColorArray<[i32; 8]> = PieceColorArray([
-    [0, 100, 105, 106, 107, 200, 500, 0],
-    [0, 500, 200, 107, 106, 105, 100, 0],
+    [0, 100, 105, 106, 107, 150, 250, 0],
+    [0, 250, 150, 107, 106, 105, 100, 0],
 ]);
 
 #[derive(Hash, PartialEq, Eq)]
@@ -20,33 +20,41 @@ struct TranspositionKey {
     king_castle: PieceColorArray<bool>,
     queen_castle: PieceColorArray<bool>,
     en_passant_target: Option<usize>,
-    depth: i32,
 }
 
 impl TranspositionKey {
-    fn new(state: &ChessState, depth: i32) -> Self {
+    fn new(state: &ChessState) -> Self {
         TranspositionKey {
             pieces: state.pieces,
             turn: state.turn,
             king_castle: state.king_castle,
             queen_castle: state.queen_castle,
             en_passant_target: state.en_passant_target,
-            depth,
         }
     }
 }
 
 lazy_static! {
-    static ref TRANSPOSITIONS: RwLock<HashMap<TranspositionKey, i32>> = RwLock::new(HashMap::new());
+    static ref TRANSPOSITION_TABLE: RwLock<HashMap<TranspositionKey, i32>> =
+        RwLock::new(HashMap::new());
 }
 
-fn set_transposition(state: &ChessState, depth: i32, value: i32) -> i32 {
+fn set_transposition(state: &ChessState, value: i32) -> i32 {
     return value;
-    TRANSPOSITIONS
+    TRANSPOSITION_TABLE
         .write()
         .unwrap()
-        .insert(TranspositionKey::new(state, depth), value);
+        .insert(TranspositionKey::new(state), value);
     value
+}
+
+fn get_transposition(state: &ChessState) -> Option<i32> {
+    return None;
+    TRANSPOSITION_TABLE
+        .read()
+        .unwrap()
+        .get(&TranspositionKey::new(state))
+        .cloned()
 }
 
 impl Piece {
@@ -99,6 +107,7 @@ impl ChessState {
 
     fn quiesce(&self, mut alpha: i32, beta: i32) -> i32 {
         let stand_pat = self.heu_eval();
+
         if stand_pat >= beta {
             return beta;
         }
@@ -106,10 +115,7 @@ impl ChessState {
             alpha = stand_pat;
         }
 
-        let mut moves = self.gen_moves();
-        moves.retain(|m| m.capture);
-
-        for m in moves {
+        for m in self.gen_moves().iter().filter(|m| m.capture) {
             let mut s = *self;
             s.make_move(&m);
             let score = -s.quiesce(-beta, -alpha);
@@ -121,33 +127,23 @@ impl ChessState {
                 alpha = score;
             }
         }
-        return alpha;
+
+        alpha
     }
 
     fn negamax(&self, start_depth: i32, depth: i32, mut alpha: i32, beta: i32) -> i32 {
         if depth == 0 {
+            return self.heu_eval();
             return self.quiesce(alpha, beta);
         }
-
-        // if let Some(value) = TRANSPOSITIONS
-        //     .read()
-        //     .unwrap()
-        //     .get(&TranspositionKey::new(self, depth))
-        // {
-        //     return *value;
-        // }
 
         let mut moves = self.gen_moves();
 
         if moves.len() == 0 {
-            return set_transposition(
-                self,
-                depth,
-                match self.check {
-                    true => CHECKMATE_EVAL + (start_depth - depth) as i32,
-                    false => 0,
-                },
-            );
+            return match self.check {
+                true => CHECKMATE_EVAL + (start_depth - depth) as i32,
+                false => 0,
+            };
         }
 
         moves.sort_by_cached_key(|m| m.heu_value());
@@ -163,25 +159,73 @@ impl ChessState {
             }
         }
 
-        set_transposition(self, depth, value)
+        value
     }
 
     fn heu_eval(&self) -> i32 {
+        if let Some(value) = get_transposition(self) {
+            return value;
+        }
+
         const A: PieceColorArray<i32> = PieceColorArray([1, -1]);
         let material_heu = self
             .pieces
-            .into_iter()
+            .iter()
             .enumerate()
             .map(|x| x.1.map_or(0, |p| p.heu_value(x.0) * A[p.c]))
             .sum::<i32>()
             * A[self.turn];
+
+        let mut s = *self;
+        s.turn = s.turn.oppo();
+        let move_heu = (self.gen_moves().len() - s.gen_moves().len()) as i32 * 10;
 
         let castle_heu = (self.queen_castle[self.turn] as i32 + self.king_castle[self.turn] as i32
             - self.queen_castle[self.turn.oppo()] as i32
             - self.king_castle[self.turn.oppo()] as i32)
             * 10;
 
-        material_heu + castle_heu
+        let material_count = self
+            .pieces
+            .iter()
+            .enumerate()
+            .map(|x| x.1.map_or(0, |p| p.heu_value(x.0)))
+            .sum::<i32>();
+
+        let endgame = material_count <= 16;
+        
+        let mut king_safety_heu = 0;
+        if endgame {
+
+        } else {
+            for offset in PieceType::King.offsets() {
+                if let Some(n) = with_offset(self.king_pos[self.turn], *offset) {
+                    if let Some(p) = self.pieces[n] {
+                        if p.c == self.turn {
+                            king_safety_heu += 5;
+                        }
+                    }
+                } else {
+                    king_safety_heu += 5;
+                }
+
+                if let Some(n) = with_offset(self.king_pos[self.turn.oppo()], *offset) {
+                    if let Some(p) = self.pieces[n] {
+                        if p.c == self.turn.oppo() {
+                            king_safety_heu -= 5;
+                        }
+                    }
+                } else {
+                    king_safety_heu -= 5;
+                }
+            }
+        }
+
+        if self.check {
+            king_safety_heu -= 50;
+        }
+
+        set_transposition(self, material_heu + castle_heu + move_heu + king_safety_heu)
     }
 
     /// Evaluates the position relative to the current player
@@ -213,7 +257,7 @@ impl ChessState {
             .map(|m| {
                 let mut s = *self;
                 s.make_move(m);
-                (m, -s.eval(depth))
+                (m, -s.eval(depth - 1))
             })
             .max_by_key(|x| x.1)
             .unwrap();

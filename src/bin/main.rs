@@ -1,4 +1,4 @@
-use std::io::stdin;
+use std::{env, io::stdin};
 
 use chessai::chess_state::{gen_moves::Move, ChessState};
 
@@ -35,6 +35,15 @@ fn perft(state: ChessState, m: Option<&Move>, depth: u32) -> [u64; 6] {
 }
 
 fn main() {
+    if env::args().len() == 3 {
+        let fen = &env::args().nth(1).unwrap();
+        let depth = env::args().nth(2).unwrap().parse::<u32>().unwrap();
+
+        let chess_state = ChessState::from_fen(fen).unwrap();
+        print!("{}", chess_state.find_best_move(depth).0.unwrap());
+        return;
+    }
+
     println!("Stupid chess engine by Jan");
 
     let mut chess_state = ChessState::default();

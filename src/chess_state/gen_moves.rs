@@ -131,7 +131,7 @@ const MAILBOX64: [usize; 64] = [
     81, 82, 83, 84, 85, 86, 87, 88, 91, 92, 93, 94, 95, 96, 97, 98,
 ];
 
-const fn with_offset(from: usize, offset: i8) -> Option<usize> {
+pub const fn with_offset(from: usize, offset: i8) -> Option<usize> {
     MAILBOX[(MAILBOX64[from] as i8 + offset) as usize]
 }
 
@@ -147,7 +147,7 @@ impl PieceType {
         }
     }
 
-    const fn offsets(&self) -> &[i8] {
+    pub const fn offsets(&self) -> &[i8] {
         match self {
             PieceType::Rook => &[-10, -1, 1, 10],
             PieceType::Knight => &[-21, -19, -12, -8, 8, 12, 19, 21],
@@ -425,6 +425,8 @@ impl ChessState {
         {
             moves.push(Move {
                 castle_queen: true,
+                from: 4 + offset,
+                to: 2 + offset,
                 ..Default::default()
             })
         }
@@ -438,6 +440,8 @@ impl ChessState {
         {
             moves.push(Move {
                 castle_king: true,
+                from: 4 + offset,
+                to: 6 + offset,
                 ..Default::default()
             })
         }
