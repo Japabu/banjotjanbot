@@ -1,10 +1,11 @@
 use std::ops::{Index, IndexMut};
 
 pub mod display;
-pub mod eval;
+pub mod search;
 pub mod fen;
 pub mod gen_moves;
 pub mod make_move;
+pub mod static_eval;
 
 const fn si(f: u8, r: u8) -> usize {
     return (8 * r + f) as usize;

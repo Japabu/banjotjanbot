@@ -40,7 +40,10 @@ fn main() {
         let depth = env::args().nth(2).unwrap().parse::<u32>().unwrap();
 
         let chess_state = ChessState::from_fen(fen).unwrap();
-        print!("{}", chess_state.find_best_move(depth).0.unwrap());
+        print!(
+            "{}",
+            chess_state.find_best_move_with_depth(depth).0.unwrap()
+        );
         return;
     }
 
@@ -150,12 +153,35 @@ fn main() {
                     }
                 };
 
-                let (m, eval) = chess_state.find_best_move(depth);
+                let (m, eval) = chess_state.find_best_move_with_depth(depth);
 
                 println!(
                     "{} {}",
                     m.map_or_else(|| String::from("None"), |x| x.to_string()),
                     eval
+                );
+            }
+            "gotime" => {
+                if args.len() != 1 {
+                    println!("Invalid amount of arguments!");
+                    continue;
+                }
+
+                let time: u64 = match args[0].parse() {
+                    Ok(time) => time,
+                    _ => {
+                        println!("Invalid time!");
+                        continue;
+                    }
+                };
+
+                let (m, eval, depth) = chess_state.find_best_move_with_time(time);
+
+                println!(
+                    "{} {} {}",
+                    m.map_or_else(|| String::from("None"), |x| x.to_string()),
+                    eval,
+                    depth,
                 );
             }
             "eval" => {

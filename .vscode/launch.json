@@ -26,15 +26,15 @@
         {
             "type": "lldb",
             "request": "launch",
-            "name": "Debug executable 'cli'",
+            "name": "Debug executable 'main'",
             "cargo": {
                 "args": [
                     "build",
-                    "--bin=cli",
+                    "--bin=main",
                     "--package=chessai"
                 ],
                 "filter": {
-                    "name": "cli",
+                    "name": "main",
                     "kind": "bin"
                 }
             },
@@ -44,53 +44,16 @@
         {
             "type": "lldb",
             "request": "launch",
-            "name": "Debug unit tests in executable 'cli'",
+            "name": "Debug unit tests in executable 'main'",
             "cargo": {
                 "args": [
                     "test",
                     "--no-run",
-                    "--bin=cli",
+                    "--bin=main",
                     "--package=chessai"
                 ],
                 "filter": {
-                    "name": "cli",
-                    "kind": "bin"
-                }
-            },
-            "args": [],
-            "cwd": "${workspaceFolder}"
-        },
-        {
-            "type": "lldb",
-            "request": "launch",
-            "name": "Debug executable 'lichess'",
-            "cargo": {
-                "args": [
-                    "build",
-                    "--bin=lichess",
-                    "--package=chessai"
-                ],
-                "filter": {
-                    "name": "lichess",
-                    "kind": "bin"
-                }
-            },
-            "args": [],
-            "cwd": "${workspaceFolder}"
-        },
-        {
-            "type": "lldb",
-            "request": "launch",
-            "name": "Debug unit tests in executable 'lichess'",
-            "cargo": {
-                "args": [
-                    "test",
-                    "--no-run",
-                    "--bin=lichess",
-                    "--package=chessai"
-                ],
-                "filter": {
-                    "name": "lichess",
+                    "name": "main",
                     "kind": "bin"
                 }
             },
