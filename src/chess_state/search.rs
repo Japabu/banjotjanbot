@@ -1,201 +1,126 @@
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
-use std::{
-    sync::{
-        atomic::{AtomicBool, Ordering},
-        Arc,
-    },
-    thread,
-    time::Duration,
-};
+use std::time::{Duration, Instant};
 
-use super::{gen_moves::Move, ChessState, PieceColor, PieceType};
+use super::{gen_moves::Move, ChessState, PieceColor, PieceColorArray};
 
 const CHECKMATE_EVAL: i32 = -1000000;
+const MAX_SEARCH_DURATION: Duration = Duration::from_secs(31536000);
 
-impl Move {
-    fn heu_value(&self) -> i32 {
-        let mut v = 0;
+const TURN_MULT: PieceColorArray<i32> = PieceColorArray([1, -1]);
 
-        if self.capture {
-            v += 10;
-        }
-
-        if self.check {
-            v += 5;
-        }
-
-        if self.castle_king || self.castle_queen {
-            v += 2;
-        }
-
-        v += match self.promote_to {
-            Some(PieceType::Queen) => 15,
-            Some(PieceType::Rook) => 10,
-            Some(PieceType::Bishop) => 9,
-            Some(PieceType::Knight) => 9,
-            _ => 0,
-        };
-
-        -v
-    }
+struct Search {
+    search_end_time: Instant,
+    start_depth: u32,
+    principal_moves: Vec<Move>,
 }
 
-impl ChessState {
-    const fn turn_mult(&self) -> i32 {
-        return match self.turn {
-            PieceColor::White => 1,
-            PieceColor::Black => -1,
-        };
-    }
+impl Search {
+    fn zw(&mut self, )
 
-    // fn quiesce(&self, mut alpha: i32, beta: i32, shutdown: &AtomicBool) -> i32 {
-    //     let stand_pat = self.static_eval();
-
-    //     if stand_pat >= beta {
-    //         return beta;
-    //     }
-    //     if alpha < stand_pat {
-    //         alpha = stand_pat;
-    //     }
-
-    //     for m in self.gen_moves().iter().filter(|m| m.capture) {
-    //         let mut s = *self;
-    //         s.make_move(&m);
-    //         let score = -s.quiesce(-beta, -alpha, shutdown);
-
-    //         if score >= beta {
-    //             return beta;
-    //         }
-    //         if score > alpha {
-    //             alpha = score;
-    //         }
-    //     }
-
-    //     alpha
-    // }
-
-    fn negamax(
-        &self,
-        start_depth: i32,
-        depth: i32,
-        mut alpha: i32,
-        beta: i32,
-        shutdown: &AtomicBool,
-    ) -> i32 {
-        if depth == 0 || shutdown.load(Ordering::Relaxed) {
-            return self.static_eval();
-            // return self.quiesce(alpha, beta, shutdown);
+    fn par_pvs(&mut self, state: &ChessState, mut alpha: i32, beta: i32, depth_left: u32) -> i32 {
+        if depth_left <= 0 {
+            return state.static_eval();
+            // return self.quiesce(state, alpha, beta);
         }
 
-        let mut moves = self.gen_moves();
-
+        let mut moves = state.gen_moves();
         if moves.len() == 0 {
-            return match self.check {
-                true => CHECKMATE_EVAL + (start_depth - depth) as i32,
+            return match state.check {
+                true => CHECKMATE_EVAL + (self.start_depth - depth_left) as i32,
                 false => 0,
             };
         }
 
-        moves.sort_by_cached_key(|m| m.heu_value());
+        let mut best_score = CHECKMATE_EVAL;
 
-        let mut value = CHECKMATE_EVAL;
-        for m in moves {
-            let mut s = *self;
-            s.make_move(&m);
-            value = i32::max(
-                value,
-                -s.negamax(start_depth, depth - 1, -beta, -alpha, shutdown),
-            );
-            alpha = i32::max(alpha, value);
-            if alpha >= beta {
-                break;
+        let depth = self.start_depth - depth_left;
+        if self.principal_moves.len() as u32 > depth {
+            let principal_move = self.principal_moves[depth as usize];
+
+            if let Some(principal_move_idex) = moves.iter().position(|m| *m == principal_move) {
+                moves.swap_remove(principal_move_idex);
+
+                let mut s = *state;
+                s.make_move(&principal_move);
+                best_score = -self.par_pvs(&s, -beta, -alpha, depth_left - 1);
+
+                if best_score > alpha {
+                    if best_score >= beta {
+                        return best_score;
+                    }
+                    alpha = best_score;
+                }
             }
         }
 
-        value
-    }
-
-    /// Evaluates the position relative to the current player
-    /// This means, the better the position for self.turn the bigger this value
-    fn eval(&self, depth: u32, shutdown: &AtomicBool) -> i32 {
-        self.negamax(
-            depth as i32,
-            depth as i32,
-            CHECKMATE_EVAL,
-            -CHECKMATE_EVAL,
-            shutdown,
-        )
-    }
-
-    /// Evaluates the position absolutely (eval>0 favors white, eval<0 favors black)
-    pub fn absolute_eval(&self, depth: u32) -> i32 {
-        match self.turn {
-            PieceColor::White => self.eval(depth, &AtomicBool::new(false)),
-            PieceColor::Black => -self.eval(depth, &AtomicBool::new(false)),
-        }
-    }
-
-    fn find_best_move_internal(&self, depth: u32, shutdown: &AtomicBool) -> (Option<Move>, i32) {
-        let moves = self.gen_moves();
-        if moves.len() == 0 {
-            return match self.check {
-                true => (None, CHECKMATE_EVAL * self.turn_mult()),
-                false => (None, 0),
-            };
-        }
-
-        let (best_move, best_value) = moves
-            .par_iter()
-            .map(|m| {
-                let mut s = *self;
+        if depth >= 5 && self.principal_moves.len() as u32 <= depth {
+            moves.sort_by_cached_key(|m| {
+                let mut s = *state;
                 s.make_move(m);
-                (m, -s.eval(depth - 1, shutdown))
-            })
-            .max_by_key(|x| x.1)
-            .unwrap();
-
-        (Some(*best_move), best_value * self.turn_mult())
-    }
-
-    /// Returns the best move for self.turn and the absolute eval after the move is done
-    pub fn find_best_move_with_depth(&self, depth: u32) -> (Option<Move>, i32) {
-        self.find_best_move_internal(depth, &AtomicBool::new(false))
-    }
-
-    pub fn find_best_move_with_time(&self, seconds: u64) -> (Option<Move>, i32, u32) {
-        let shutdown = Arc::new(AtomicBool::new(false));
-
-        thread::scope(|s| {
-            let worker = s.spawn(|| {
-                let mut last_result = (None, 0, 0);
-                let mut depth = 1;
-                loop {
-                    let result = self.find_best_move_internal(depth, &shutdown);
-                    if shutdown.load(Ordering::Relaxed) {
-                        break;
-                    }
-
-                    println!(
-                        "{} {} {}",
-                        depth,
-                        result
-                            .0
-                            .map_or_else(|| String::from("None"), |x| x.to_string()),
-                        result.1
-                    );
-
-                    last_result = (result.0, result.1, depth);
-                    depth += 1;
-                }
-
-                last_result
+                -self.par_pvs(&s, alpha, beta, 1)
             });
+        } else {
+            moves.sort_by_cached_key(|m| m.static_eval());
+        }
 
-            thread::sleep(Duration::from_secs(seconds));
-            shutdown.store(true, Ordering::Relaxed);
+        for m in moves {
+            if Instant::now() >= self.search_end_time {
+                return 0;
+            }
 
-            worker.join()
-        })
-        .unwrap()
+            let mut s = *state;
+            s.make_move(&m);
+            let mut score = -self.par_pvs(&s, -alpha - 1, -alpha, depth_left - 1);
+            if score > alpha && score < beta {
+                score = -self.par_pvs(&s, -beta, -alpha, depth_left - 1);
+                if score > alpha {
+                    alpha = score;
+                    self.principal_moves.truncate(depth as usize);
+                    self.principal_moves.push(m);
+                }
+            }
+            if score > best_score {
+                if score >= beta {
+                    return score;
+                }
+                best_score = score;
+            }
+        }
+
+        best_score
+    }
+}
+
+impl ChessState {
+    pub fn eval(&self, max_depth: Option<u32>, max_duration: Option<Duration>) -> (i32, Vec<Move>) {
+        let max_depth = max_depth.unwrap_or(u32::MAX);
+        let max_duration = max_duration.unwrap_or(MAX_SEARCH_DURATION);
+
+        let mut best_res = (self.static_eval(), Vec::new());
+
+        if max_depth == 0 {
+            return best_res;
+        }
+
+        let mut search = Search {
+            search_end_time: Instant::now() + max_duration,
+            start_depth: 0,
+            principal_moves: Vec::new(),
+        };
+
+        let mut depth = 1;
+        while depth <= max_depth {
+            search.start_depth = depth;
+            let res = search.par_pvs(self, CHECKMATE_EVAL, -CHECKMATE_EVAL, depth);
+
+            if Instant::now() >= search.search_end_time {
+                break;
+            }
+
+            best_res = (res, search.principal_moves.clone());
+            depth += 1;
+        }
+
+        best_res
     }
 }
