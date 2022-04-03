@@ -7,6 +7,7 @@ pub mod make_move;
 pub mod search;
 pub mod static_eval;
 pub mod zobrist;
+pub mod transposition_table;
 
 const fn si(f: u8, r: u8) -> usize {
     return (8 * r + f) as usize;
@@ -70,8 +71,8 @@ pub struct ChessState {
     queen_castle: PieceColorArray<bool>,
     en_passant_target: Option<usize>,
 
-    halfmove_count: u32,
-    move_count: u32,
+    halfmove_clock: u32,
+    move_clock: u32,
     check: bool,
     king_pos: PieceColorArray<usize>,
     hash: u64,
@@ -79,7 +80,7 @@ pub struct ChessState {
 
 impl Default for ChessState {
     fn default() -> Self {
-        Self {
+        let mut ret = Self {
             pieces: [None; 64],
             king_pos: PieceColorArray([0, 0]),
 
@@ -88,9 +89,12 @@ impl Default for ChessState {
             queen_castle: PieceColorArray([false, false]),
             en_passant_target: None,
             check: false,
-            halfmove_count: 0,
-            move_count: 1,
-            hash: 0x8d31d5b8b8d31d5b,
-        }
+            halfmove_clock: 0,
+            move_clock: 1,
+            hash: 0,
+        };
+
+        ret.calc_hash();
+        ret
     }
 }

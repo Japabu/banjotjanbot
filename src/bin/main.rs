@@ -1,6 +1,8 @@
 use std::{io::stdin, time::Duration};
 
-use chessai::chess_state::{gen_moves::Move, ChessState};
+use chessai::chess_state::{
+    gen_moves::Move, transposition_table::TranspositionTable, zobrist::Zobrist, ChessState,
+};
 
 fn perft(state: ChessState, m: Option<&Move>, depth: u32) -> [u64; 6] {
     if depth == 0 {
@@ -43,6 +45,9 @@ fn fmt_moves(moves: &[Move]) -> String {
 }
 
 fn main() {
+    Zobrist::init();
+    TranspositionTable::init();
+
     println!("Stupid chess engine by Jan");
 
     let mut chess_state = ChessState::default();

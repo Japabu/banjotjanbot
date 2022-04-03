@@ -75,7 +75,7 @@ impl PieceType {
             PieceType::Bishop => 330,
             PieceType::Rook => 500,
             PieceType::Queen => 900,
-            PieceType::King => 20000,
+            PieceType::King => 0,
         }
     }
 }
@@ -124,6 +124,15 @@ impl ChessState {
         }
 
         material_heu + positional_heu + king_safety_heu
+    }
+
+    pub fn clock_factor(&self, score: i32) -> i32 {
+        if self.halfmove_clock >= 50 {
+            return 0;
+        }
+
+        let halfmove_factor = 1. / f32::exp(f32::powi(self.halfmove_clock as f32 / 40., 4));
+        (score as f32 * halfmove_factor).round() as i32
     }
 }
 

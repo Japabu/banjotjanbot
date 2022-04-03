@@ -13,6 +13,16 @@ impl ChessState {
         self.en_passant_target = m.new_en_passant_target;
         self.check = m.check;
 
+        if m.pt == PieceType::Pawn || m.capture.is_some() {
+            self.halfmove_clock = 0;
+        } else {
+            self.halfmove_clock += 1;
+        }
+
+        if self.turn == PieceColor::White {
+            self.move_clock += 1;
+        }
+
         if m.castle_queen {
             let offset = CASTLE_OFFSET[self.turn];
             self.pieces[2 + offset] = self.pieces[4 + offset];
@@ -45,7 +55,7 @@ impl ChessState {
                 && !KING_CASTLE_SQUARES[color].contains(&m.to);
         }
 
-        if self.pieces[m.from].unwrap().t == PieceType::King {
+        if m.pt == PieceType::King {
             self.king_pos[self.turn] = m.to;
         }
 
@@ -65,7 +75,6 @@ impl ChessState {
         }
 
         self.turn = self.turn.oppo();
-
         // TODO: REMOVE
         self.calc_hash();
     }

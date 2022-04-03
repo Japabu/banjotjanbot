@@ -1,4 +1,4 @@
-use std::fmt::{Debug, Display};
+use std::fmt::{Display};
 
 use super::{gen_moves::Move, si, ChessState, Piece, PieceColor, PieceType};
 
@@ -77,8 +77,8 @@ impl Display for ChessState {
         if let Some(x) = self.en_passant_target {
             writeln!(fmt, "En passant target: {:?}", x)?;
         }
-        writeln!(fmt, "Halfmove count: {}", self.halfmove_count)?;
-        writeln!(fmt, "Move count: {}", self.move_count)?;
+        writeln!(fmt, "Halfmove count: {}", self.halfmove_clock)?;
+        writeln!(fmt, "Move count: {}", self.move_clock)?;
 
         writeln!(
             fmt,

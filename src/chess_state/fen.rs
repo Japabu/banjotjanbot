@@ -130,17 +130,19 @@ impl ChessState {
             _ => return Err("Invalid en passant target".to_string()),
         };
 
-        s.halfmove_count = match splits[4].parse::<u32>() {
+        s.halfmove_clock = match splits[4].parse::<u32>() {
             Ok(x) => x,
-            Err(_) => return Err("Invalid halfmove count".to_string()),
+            Err(_) => return Err("Invalid halfmove clock".to_string()),
         };
 
-        s.move_count = match splits[5].parse::<u32>() {
+        s.move_clock = match splits[5].parse::<u32>() {
             Ok(x) => x,
-            Err(_) => return Err("Invalid move count".to_string()),
+            Err(_) => return Err("Invalid move clock".to_string()),
         };
 
         s.check = s.is_square_attacked(s.turn.oppo(), s.king_pos[s.turn]);
+
+        s.calc_hash();
 
         Ok(s)
     }

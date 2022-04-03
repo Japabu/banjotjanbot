@@ -1,5 +1,3 @@
-use std::default;
-
 use crate::chess_state::PieceColorArray;
 
 use super::{ChessState, Piece, PieceColor, PieceType};
