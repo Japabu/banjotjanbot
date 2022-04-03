@@ -43,10 +43,6 @@ impl ChessState {
                 && !KING_CASTLE_SQUARES[color].contains(&m.to);
         }
 
-        if self.pieces[m.from].is_none() {
-            let x = 3;
-        }
-
         if self.pieces[m.from].unwrap().t == PieceType::King {
             self.king_pos[self.turn] = m.to;
         }
@@ -67,5 +63,7 @@ impl ChessState {
         }
 
         self.turn = self.turn.oppo();
+
+        self.hash_move(m);
     }
 }

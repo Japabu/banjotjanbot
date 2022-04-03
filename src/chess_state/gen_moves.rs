@@ -1,3 +1,5 @@
+use std::default;
+
 use crate::chess_state::PieceColorArray;
 
 use super::{ChessState, Piece, PieceColor, PieceType};
@@ -158,17 +160,35 @@ impl PieceType {
     }
 }
 
-#[derive(Default, Clone, Copy)]
+#[derive(Clone, Copy, Eq)]
 pub struct Move {
+    pub pieceType: PieceType,
     pub from: usize,
     pub to: usize,
-    pub capture: bool,
     pub promote_to: Option<PieceType>,
     pub new_en_passant_target: Option<usize>,
     pub castle_king: bool,
     pub castle_queen: bool,
     pub en_passant: bool,
     pub check: bool,
+    pub capture: Option<PieceType>,
+}
+
+impl Default for Move {
+    fn default() -> Self {
+        Move {
+            from: 0,
+            to: 0,
+            promote_to: None,
+            new_en_passant_target: None,
+            castle_king: false,
+            castle_queen: false,
+            en_passant: false,
+            check: false,
+            pieceType: PieceType::Rook,
+            capture: None,
+        }
+    }
 }
 
 impl PartialEq for Move {
@@ -202,6 +222,7 @@ impl ChessState {
                         PieceType::Queen,
                     ]
                     .map(|x| Move {
+                        pieceType: PieceType::Pawn,
                         from,
                         to,
                         promote_to: Some(x),
@@ -210,6 +231,7 @@ impl ChessState {
                 )
             } else {
                 moves.push(Move {
+                    pieceType: PieceType::Pawn,
                     from,
                     to,
                     ..Default::default()
@@ -225,6 +247,7 @@ impl ChessState {
                 let to2 = (to as i8 + forward) as usize;
                 if self.pieces[to2].is_none() {
                     moves.push(Move {
+                        pieceType: PieceType::Pawn,
                         from,
                         to: to2,
                         new_en_passant_target: Some(to),
@@ -236,8 +259,8 @@ impl ChessState {
 
         // Capture
         for offset in [1 as i8, -1] {
-            if let Some(to) = with_offset(to, offset) {
-                if matches!(self.pieces[to], Some(p) if p.c != self.turn) {
+            if let Some(to) = with_offset(to, offset)
+            &&  let Some(p) = self.pieces[to] && p.c != self.turn {
                     if to / 8
                         == match self.turn {
                             PieceColor::White => 7,
@@ -252,23 +275,24 @@ impl ChessState {
                                 PieceType::Queen,
                             ]
                             .map(|x| Move {
+                                pieceType: PieceType::Pawn,
                                 from,
                                 to,
-                                capture: true,
+                                capture: Some(p.t),
                                 promote_to: Some(x),
                                 ..Default::default()
                             }),
                         )
                     } else {
                         moves.push(Move {
+                            pieceType: PieceType::Pawn,
                             from,
                             to,
-                            capture: true,
+                            capture: Some(p.t),
                             ..Default::default()
                         })
                     }
                 }
-            }
         }
 
         // En passant
@@ -276,9 +300,10 @@ impl ChessState {
             for offset in [1 as i8, -1] {
                 if with_offset(to, offset) == Some(en_passant_target) {
                     moves.push(Move {
+                        pieceType: PieceType::Pawn,
                         from,
                         to: en_passant_target,
-                        capture: true,
+                        capture: Some(PieceType::Pawn),
                         en_passant: true,
                         ..Default::default()
                     });
@@ -299,9 +324,10 @@ impl ChessState {
                 if let Some(other) = self.pieces[to] {
                     if other.c != self.turn {
                         moves.push(Move {
+                            pieceType: p.t,
                             from,
                             to,
-                            capture: true,
+                            capture: Some(other.t),
                             ..Default::default()
                         });
                     }
@@ -309,6 +335,7 @@ impl ChessState {
                 }
 
                 moves.push(Move {
+                    pieceType: p.t,
                     from,
                     to,
                     ..Default::default()
@@ -429,9 +456,10 @@ impl ChessState {
             && !self.is_square_attacked(self.turn.oppo(), 3 + offset)
         {
             moves.push(Move {
-                castle_queen: true,
+                pieceType: PieceType::King,
                 from: 4 + offset,
                 to: 2 + offset,
+                castle_queen: true,
                 ..Default::default()
             })
         }
@@ -444,6 +472,7 @@ impl ChessState {
             && !self.is_square_attacked(self.turn.oppo(), 5 + offset)
         {
             moves.push(Move {
+                pieceType: PieceType::King,
                 castle_king: true,
                 from: 4 + offset,
                 to: 6 + offset,
@@ -468,6 +497,9 @@ impl ChessState {
             }
         }
 
+        self.gen_castling_moves(&mut moves);
+
+        // Remove moves that would put the king in check and update whether the move is a check
         moves.retain_mut(|m| {
             let mut s = *self;
             s.make_move(m);
@@ -480,8 +512,6 @@ impl ChessState {
 
             true
         });
-
-        self.gen_castling_moves(&mut moves);
 
         moves
     }

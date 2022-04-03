@@ -1,4 +1,4 @@
-use std::{env, io::stdin, time::Duration};
+use std::{io::stdin, time::Duration};
 
 use chessai::chess_state::{gen_moves::Move, ChessState};
 
@@ -7,7 +7,7 @@ fn perft(state: ChessState, m: Option<&Move>, depth: u32) -> [u64; 6] {
         if let Some(m) = m {
             return [
                 1,
-                m.capture as u64,
+                m.capture.is_some() as u64,
                 m.en_passant as u64,
                 (m.castle_king || m.castle_queen) as u64,
                 m.promote_to.is_some() as u64,

@@ -1,4 +1,4 @@
 #![feature(vec_retain_mut)]
-#![feature(scoped_threads)]
+#![feature(let_chains)]
 
 pub mod chess_state;

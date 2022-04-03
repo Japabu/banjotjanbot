@@ -1,4 +1,4 @@
-use super::{ChessState, Piece, PieceColor, PieceType, gen_moves::Move};
+use super::{gen_moves::Move, ChessState, Piece, PieceColor, PieceType};
 
 const PAWN_VALUES: [i32; 64] = [
     0, 0, 0, 0, 0, 0, 0, 0, 50, 50, 50, 50, 50, 50, 50, 50, 10, 10, 20, 30, 30, 20, 10, 10, 5, 5,
@@ -131,25 +131,23 @@ impl Move {
     pub fn static_eval(&self) -> i32 {
         let mut v = 0;
 
-        if self.capture {
-            v += 10;
+        if let Some(t) = self.capture {
+            v += i32::max(100, t.mat_value() - self.pieceType.mat_value());
         }
 
         if self.check {
-            v += 5;
+            v += 50;
         }
 
         if self.castle_king || self.castle_queen {
-            v += 2;
+            v += 20;
         }
 
-        v += match self.promote_to {
-            Some(PieceType::Queen) => 15,
-            Some(PieceType::Rook) => 10,
-            Some(PieceType::Bishop) => 9,
-            Some(PieceType::Knight) => 9,
-            _ => 0,
-        };
+        if let Some(t) = self.promote_to {
+            v += t.mat_value();
+        }
+
+        // TODO: Check if square is attacked by pawn
 
         -v
     }

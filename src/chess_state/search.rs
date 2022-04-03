@@ -5,6 +5,7 @@ use super::{gen_moves::Move, ChessState, PieceColor, PieceColorArray};
 
 const CHECKMATE_EVAL: i32 = -1000000;
 const MAX_SEARCH_DURATION: Duration = Duration::from_secs(31536000);
+const MAX_DEPTH: u32 = 200;
 
 const TURN_MULT: PieceColorArray<i32> = PieceColorArray([1, -1]);
 
@@ -15,8 +16,6 @@ struct Search {
 }
 
 impl Search {
-    fn zw(&mut self, )
-
     fn par_pvs(&mut self, state: &ChessState, mut alpha: i32, beta: i32, depth_left: u32) -> i32 {
         if depth_left <= 0 {
             return state.static_eval();
@@ -53,16 +52,7 @@ impl Search {
             }
         }
 
-        if depth >= 5 && self.principal_moves.len() as u32 <= depth {
-            moves.sort_by_cached_key(|m| {
-                let mut s = *state;
-                s.make_move(m);
-                -self.par_pvs(&s, alpha, beta, 1)
-            });
-        } else {
-            moves.sort_by_cached_key(|m| m.static_eval());
-        }
-
+        moves.sort_by_cached_key(|m| m.static_eval());
         for m in moves {
             if Instant::now() >= self.search_end_time {
                 return 0;
@@ -75,8 +65,11 @@ impl Search {
                 score = -self.par_pvs(&s, -beta, -alpha, depth_left - 1);
                 if score > alpha {
                     alpha = score;
-                    self.principal_moves.truncate(depth as usize);
-                    self.principal_moves.push(m);
+                    if self.principal_moves.len() <= depth as usize {
+                        self.principal_moves.push(m);
+                    } else {
+                        self.principal_moves[depth as usize] = m;
+                    }
                 }
             }
             if score > best_score {
@@ -91,9 +84,17 @@ impl Search {
     }
 }
 
+fn fmt_moves(moves: &[Move]) -> String {
+    let mut s = String::new();
+    for m in moves {
+        s.push_str(&format!("{} ", m));
+    }
+    s
+}
+
 impl ChessState {
     pub fn eval(&self, max_depth: Option<u32>, max_duration: Option<Duration>) -> (i32, Vec<Move>) {
-        let max_depth = max_depth.unwrap_or(u32::MAX);
+        let max_depth = max_depth.unwrap_or(MAX_DEPTH);
         let max_duration = max_duration.unwrap_or(MAX_SEARCH_DURATION);
 
         let mut best_res = (self.static_eval(), Vec::new());
@@ -119,6 +120,8 @@ impl ChessState {
 
             best_res = (res, search.principal_moves.clone());
             depth += 1;
+
+            println!("{} {}", depth, fmt_moves(&search.principal_moves));
         }
 
         best_res
