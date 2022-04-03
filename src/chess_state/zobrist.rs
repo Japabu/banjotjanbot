@@ -43,9 +43,41 @@ pub fn init_zobrist() {
 }
 
 impl ChessState {
-    pub fn hash_move(&mut self, m: &Move) {
-        // let zobrist = unsafe { ZOBRIST.as_ref().unwrap() };
-        // self.hash ^= zobrist.piece[self.turn][m.piece.t as usize][m.from];
-        // self.hash ^= zobrist.piece[self.turn][m.piece.t as usize][m.to];
+    pub fn calc_hash(&mut self) {
+        let zobrist = unsafe { ZOBRIST.as_mut().unwrap() };
+
+        self.hash = zobrist.turn;
+
+        for (sq, piece) in self.pieces.iter().enumerate() {
+            if let Some(p) = piece {
+                self.hash ^= zobrist.piece[p.c][p.t as usize][sq];
+            }
+        }
+
+        for color in [PieceColor::White, PieceColor::Black] {
+            if self.queen_castle[color] {
+                self.hash ^= zobrist.queen_castle[color];
+            }
+
+            if self.king_castle[color] {
+                self.hash ^= zobrist.king_castle[color];
+            }
+        }
+
+        if let Some(sq) = self.en_passant_target {
+            self.hash ^= zobrist.en_passant[sq % 8];
+        }
+    }
+
+    pub fn inc_update(&mut self, m: &Move) {
+        let zobrist = unsafe { ZOBRIST.as_ref().unwrap() };
+
+        self.hash ^= zobrist.piece[self.turn][m.pt as usize][m.from];
+
+        if let Some(p) = m.capture {
+            self.hash ^= zobrist.piece[self.turn][p as usize][m.to];
+        }
+
+        self.hash ^= zobrist.piece[self.turn][m.pt as usize][m.to];
     }
 }

@@ -132,7 +132,7 @@ impl Move {
         let mut v = 0;
 
         if let Some(t) = self.capture {
-            v += i32::max(100, t.mat_value() - self.pieceType.mat_value());
+            v += i32::max(100, t.mat_value() - self.pt.mat_value());
         }
 
         if self.check {
@@ -149,6 +149,6 @@ impl Move {
 
         // TODO: Check if square is attacked by pawn
 
-        -v
+        v
     }
 }

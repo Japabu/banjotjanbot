@@ -8,6 +8,8 @@ const KING_CASTLE_SQUARES: PieceColorArray<[usize; 2]> =
 
 impl ChessState {
     pub fn make_move(&mut self, m: &Move) {
+        // self.inc_update(m);
+
         self.en_passant_target = m.new_en_passant_target;
         self.check = m.check;
 
@@ -64,6 +66,7 @@ impl ChessState {
 
         self.turn = self.turn.oppo();
 
-        self.hash_move(m);
+        // TODO: REMOVE
+        self.calc_hash();
     }
 }
