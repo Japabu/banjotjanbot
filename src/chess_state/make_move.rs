@@ -1,5 +1,7 @@
 use super::{
-    gen_moves::Move, zobrist::Zobrist, ChessState, Piece, PieceColor, PieceColorArray, PieceType,
+    gen_moves::{with_offset, Move},
+    zobrist::Zobrist,
+    ChessState, Piece, PieceColor, PieceColorArray, PieceType,
 };
 
 const CASTLE_OFFSET: PieceColorArray<u8> = PieceColorArray([0, 7 * 8]);
@@ -10,9 +12,27 @@ const KING_CASTLE_SQUARES: PieceColorArray<[u8; 2]> =
 
 impl ChessState {
     pub fn make_move(&mut self, m: &Move) {
-        // self.hash = Zobrist::inc_update(self.hash, m);
+        self.hash = Zobrist::inc_update(self.hash, self, m);
 
-        self.en_passant_target = m.new_en_passant_target;
+        // Clear en passant square
+        self.en_passant_target = None;
+
+        // Only set en passant target if there is an enemy pawn ready to perform it
+        if m.new_en_passant_target.is_some() {
+            for i in [-1, 1].iter().filter_map(|o| with_offset(m.to, *o)) {
+                match self.pieces[i as usize] {
+                    Some(Piece {
+                        c,
+                        t: PieceType::Pawn,
+                    }) if c == self.turn.opposite() => {
+                        self.en_passant_target = m.new_en_passant_target;
+                        break;
+                    }
+                    _ => (),
+                }
+            }
+        }
+
         self.check = m.check;
 
         if m.pt == PieceType::Pawn || m.capture.is_some() {
@@ -34,7 +54,7 @@ impl ChessState {
             self.queen_castle[self.turn] = false;
             self.king_castle[self.turn] = false;
             self.king_pos[self.turn] = 2 + offset;
-            self.turn = self.turn.oppo();
+            self.turn = self.turn.opposite();
             return;
         } else if m.castle_king {
             let offset = CASTLE_OFFSET[self.turn];
@@ -45,7 +65,7 @@ impl ChessState {
             self.queen_castle[self.turn] = false;
             self.king_castle[self.turn] = false;
             self.king_pos[self.turn] = 6 + offset;
-            self.turn = self.turn.oppo();
+            self.turn = self.turn.opposite();
             return;
         }
 
@@ -76,6 +96,6 @@ impl ChessState {
             self.pieces[m.to as usize] = Some(Piece { c: self.turn, t });
         }
 
-        self.turn = self.turn.oppo();
+        self.turn = self.turn.opposite();
     }
 }

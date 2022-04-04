@@ -118,8 +118,8 @@ impl ChessState {
         if !is_endgame {
             king_safety_heu += (self.queen_castle[self.turn] as i32
                 + self.king_castle[self.turn] as i32
-                - self.queen_castle[self.turn.oppo()] as i32
-                - self.king_castle[self.turn.oppo()] as i32)
+                - self.queen_castle[self.turn.opposite()] as i32
+                - self.king_castle[self.turn.opposite()] as i32)
                 * 10;
         }
 

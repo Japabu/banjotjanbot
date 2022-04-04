@@ -1,4 +1,6 @@
-use super::{si, zobrist::Zobrist, ChessState, Piece, PieceColor, PieceType};
+use super::{
+    gen_moves::with_offset, si, zobrist::Zobrist, ChessState, Piece, PieceColor, PieceType,
+};
 
 impl ChessState {
     pub fn from_fen(fen: &str) -> Result<ChessState, String> {
@@ -124,11 +126,32 @@ impl ChessState {
             }
         }
 
-        s.en_passant_target = match splits[3].as_bytes() {
+        let new_en_passant_target = match splits[3].as_bytes() {
             [b'-'] => None,
             [file @ b'a'..=b'h', rank @ b'1'..=b'8'] => Some(si(file - b'a', rank - b'1') as u8),
             _ => return Err("Invalid en passant target".to_string()),
         };
+
+        // Check if en passant is possible
+        if let Some(sq) = new_en_passant_target {
+            let sq = match s.turn {
+                PieceColor::White => sq - 8,
+                PieceColor::Black => sq + 8,
+            };
+
+            for i in [-1, 1].iter().filter_map(|o| with_offset(sq, *o)) {
+                match s.pieces[i as usize] {
+                    Some(Piece {
+                        c,
+                        t: PieceType::Pawn,
+                    }) if c == s.turn => {
+                        s.en_passant_target = new_en_passant_target;
+                        break;
+                    }
+                    _ => (),
+                }
+            }
+        }
 
         s.halfmove_clock = match splits[4].parse::<u8>() {
             Ok(x) => x,
@@ -140,7 +163,7 @@ impl ChessState {
             Err(_) => return Err("Invalid move clock".to_string()),
         };
 
-        s.check = s.is_square_attacked(s.turn.oppo(), s.king_pos[s.turn]);
+        s.check = s.is_square_attacked(s.turn.opposite(), s.king_pos[s.turn]);
 
         s.hash = Zobrist::calc_hash(&s);
 

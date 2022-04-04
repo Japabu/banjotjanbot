@@ -1,6 +1,7 @@
-use super::{gen_moves::Move, ChessState, Piece, PieceColor, PieceColorArray, PieceType};
-
-const CASTLE_OFFSET: PieceColorArray<usize> = PieceColorArray([0, 7 * 8]);
+use super::{
+    gen_moves::{with_offset, Move},
+    ChessState, Piece, PieceColor, PieceColorArray, PieceType,
+};
 
 const RANDOM64: [u64; 781] = [
     0x9D39247E33776D41,
@@ -791,6 +792,12 @@ const RANDOM_CASTLE_OFFSET: usize = 768;
 const RANDOM_EN_PASSANT_OFFSET: usize = 772;
 const RANDOM_TURN_OFFSET: usize = 780;
 
+const CASTLE_OFFSET: PieceColorArray<u8> = PieceColorArray([0, 7 * 8]);
+const QUEEN_CASTLE_SQUARES: PieceColorArray<[u8; 2]> =
+    PieceColorArray([[0, 4], [0 + 7 * 8, 4 + 7 * 8]]);
+const KING_CASTLE_SQUARES: PieceColorArray<[u8; 2]> =
+    PieceColorArray([[4, 7], [4 + 7 * 8, 7 + 7 * 8]]);
+
 const fn z_piece(piece: Piece, square: u8) -> u64 {
     let mut offset_piece = match piece.t {
         PieceType::Pawn => 0,
@@ -857,6 +864,7 @@ impl Zobrist {
             }
         }
 
+        // Respect en passant square
         if let Some(sq) = state.en_passant_target {
             hash ^= z_en_passant(sq);
         }
@@ -864,92 +872,319 @@ impl Zobrist {
         hash
     }
 
-    // pub fn inc_update(mut hash: u64, m: &Move) -> u64 {
-    //     hash ^= z_turn(PieceColor::White);
+    pub fn inc_update(mut hash: u64, state: &ChessState, m: &Move) -> u64 {
+        hash ^= z_turn(PieceColor::White);
 
-    //     hash ^= zobrist.piece[state.turn][m.pt as usize][m.from];
+        if m.castle_queen {
+            let rook = Piece {
+                c: state.turn,
+                t: PieceType::Rook,
+            };
 
-    //     if let Some(p) = m.promote_to {
-    //         hash ^= zobrist.piece[state.turn][p as usize][m.to];
-    //     } else {
-    //         hash ^= zobrist.piece[state.turn][m.pt as usize][m.to];
-    //     }
+            let king = Piece {
+                c: state.turn,
+                t: PieceType::King,
+            };
 
-    //     if let Some(p) = m.capture {
-    //         hash ^= zobrist.piece[state.turn.oppo()][p as usize][m.to];
-    //     }
+            let offset = CASTLE_OFFSET[state.turn];
+            hash ^= z_piece(king, 4 + offset);
+            hash ^= z_piece(king, 2 + offset);
+            hash ^= z_piece(rook, 0 + offset);
+            hash ^= z_piece(rook, 3 + offset);
 
-    //     if let Some(t) = state.en_passant_target {
-    //         hash ^= zobrist.en_passant[t % 8];
-    //     }
+            hash ^= z_castle_queen(state.turn);
+            if state.king_castle[state.turn] {
+                hash ^= z_castle_king(state.turn);
+            }
+            return hash;
+        } else if m.castle_king {
+            let rook = Piece {
+                c: state.turn,
+                t: PieceType::Rook,
+            };
 
-    //     if let Some(t) = m.new_en_passant_target {
-    //         hash ^= zobrist.en_passant[t % 8];
-    //     }
+            let king = Piece {
+                c: state.turn,
+                t: PieceType::King,
+            };
 
-    //     if m.castle_queen {
-    //         let offset = CASTLE_OFFSET[state.turn];
-    //         hash ^= zobrist.piece[state.turn][PieceType::King as usize][4 + offset];
-    //         hash ^= zobrist.piece[state.turn][PieceType::King as usize][2 + offset];
-    //         hash ^= zobrist.piece[state.turn][PieceType::Rook as usize][0 + offset];
-    //         hash ^= zobrist.piece[state.turn][PieceType::Rook as usize][3 + offset];
+            let offset = CASTLE_OFFSET[state.turn];
+            hash ^= z_piece(king, 4 + offset);
+            hash ^= z_piece(king, 6 + offset);
+            hash ^= z_piece(rook, 7 + offset);
+            hash ^= z_piece(rook, 5 + offset);
 
-    //         hash ^= zobrist.queen_castle[state.turn];
-    //         if state.king_castle[state.turn] {
-    //             hash ^= zobrist.king_castle[state.turn];
-    //         }
-    //         return;
-    //     } else if m.castle_king {
-    //         let offset = CASTLE_OFFSET[state.turn];
-    //         hash ^= zobrist.piece[state.turn][PieceType::King as usize][4 + offset];
-    //         hash ^= zobrist.piece[state.turn][PieceType::King as usize][6 + offset];
-    //         hash ^= zobrist.piece[state.turn][PieceType::Rook as usize][7 + offset];
-    //         hash ^= zobrist.piece[state.turn][PieceType::Rook as usize][5 + offset];
+            hash ^= z_castle_king(state.turn);
+            if state.queen_castle[state.turn] {
+                hash ^= z_castle_queen(state.turn);
+            }
+            return hash;
+        }
 
-    //         hash ^= zobrist.king_castle[state.turn];
-    //         if state.queen_castle[state.turn] {
-    //             hash ^= zobrist.queen_castle[state.turn];
-    //         }
-    //         return;
-    //     }
+        let piece = Piece {
+            c: state.turn,
+            t: m.pt,
+        };
 
-    //     for color in [PieceColor::White, PieceColor::Black] {
-    //         if state.queen_castle[color] && QUEEN_CASTLE_SQUARES[color].contains(&m.from)
-    //             || QUEEN_CASTLE_SQUARES[color].contains(&m.to)
-    //         {
-    //             hash ^= zobrist.queen_castle[color];
-    //         }
+        hash ^= z_piece(piece, m.from);
 
-    //         if state.king_castle[color] && KING_CASTLE_SQUARES[color].contains(&m.from)
-    //             || KING_CASTLE_SQUARES[color].contains(&m.to)
-    //         {
-    //             hash ^= zobrist.king_castle[color];
-    //         }
-    //     }
+        if let Some(p) = m.promote_to {
+            let promo_piece = Piece {
+                c: state.turn,
+                t: p,
+            };
+            hash ^= z_piece(promo_piece, m.to);
+        } else {
+            hash ^= z_piece(piece, m.to);
+        }
 
-    //     if m.en_passant {
-    //         let t = (m.to as i8
-    //             + match state.turn {
-    //                 PieceColor::White => -8,
-    //                 PieceColor::Black => 8,
-    //             }) as usize;
-    //         hash ^= zobrist.piece[state.turn.oppo()][PieceType::Pawn as usize][t];
-    //     }
+        if m.en_passant {
+            let captured_piece = Piece {
+                c: state.turn.opposite(),
+                t: PieceType::Pawn,
+            };
 
-    //     hash
-    // }
+            let i = match state.turn {
+                PieceColor::White => m.to - 8,
+                PieceColor::Black => m.to + 8,
+            };
+
+            hash ^= z_piece(captured_piece, i);
+        } else if let Some(pt) = m.capture {
+            let captured_piece = Piece {
+                c: state.turn.opposite(),
+                t: pt,
+            };
+            hash ^= z_piece(captured_piece, m.to);
+        }
+
+        // Clear old en passant target
+        if let Some(t) = state.en_passant_target {
+            hash ^= z_en_passant(t);
+        }
+
+        // Set new en passant target if there is an enemy pawn ready to perform en passant
+        if let Some(sq) = m.new_en_passant_target {
+            for i in [-1, 1].iter().filter_map(|o| with_offset(m.to, *o)) {
+                match state.pieces[i as usize] {
+                    Some(Piece {
+                        c,
+                        t: PieceType::Pawn,
+                    }) if c == state.turn.opposite() => {
+                        hash ^= z_en_passant(sq);
+                        break;
+                    }
+                    _ => (),
+                }
+            }
+        }
+
+        for color in [PieceColor::White, PieceColor::Black] {
+            if state.queen_castle[color]
+                && (QUEEN_CASTLE_SQUARES[color].contains(&m.from)
+                    || QUEEN_CASTLE_SQUARES[color].contains(&m.to))
+            {
+                hash ^= z_castle_queen(color);
+            }
+
+            if state.king_castle[color]
+                && (KING_CASTLE_SQUARES[color].contains(&m.from)
+                    || KING_CASTLE_SQUARES[color].contains(&m.to))
+            {
+                hash ^= z_castle_king(color);
+            }
+        }
+
+        hash
+    }
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::chess_state::ChessState;
+    use crate::chess_state::{gen_moves::Move, ChessState, zobrist::Zobrist};
+
+    fn find_move(moves: &[Move], m: &str) -> Option<Move> {
+        moves.iter().find(|mv| mv.to_string() == m).cloned()
+    }
 
     #[test]
-    fn starting_pos_hash() {
-        let state =
+    fn calc_hash_test_0() {
+        assert_eq!(
+            ChessState::from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
+                .unwrap()
+                .hash,
+            0x463b96181691fc9c
+        );
+    }
+
+    #[test]
+    pub fn calc_hash_test_1() {
+        assert_eq!(
+            ChessState::from_fen("rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1")
+                .unwrap()
+                .hash,
+            0x823c9b50fd114196
+        );
+    }
+
+    #[test]
+    pub fn calc_hash_test_2() {
+        assert_eq!(
+            ChessState::from_fen("rnbqkbnr/ppp1pppp/8/3p4/4P3/8/PPPP1PPP/RNBQKBNR w KQkq d6 0 2")
+                .unwrap()
+                .hash,
+            0x0756b94461c50fb0
+        );
+    }
+
+    #[test]
+    pub fn calc_hash_test_3() {
+        assert_eq!(
+            ChessState::from_fen("rnbqkbnr/ppp1pppp/8/3pP3/8/8/PPPP1PPP/RNBQKBNR b KQkq - 0 2")
+                .unwrap()
+                .hash,
+            0x662fafb965db29d4
+        );
+    }
+
+    #[test]
+    pub fn calc_hash_test_4() {
+        assert_eq!(
+            ChessState::from_fen("rnbqkbnr/ppp1p1pp/8/3pPp2/8/8/PPPP1PPP/RNBQKBNR w KQkq f6 0 3")
+                .unwrap()
+                .hash,
+            0x22a48b5a8e47ff78
+        );
+    }
+
+    #[test]
+    pub fn calc_hash_test_5() {
+        assert_eq!(
+            ChessState::from_fen("rnbqkbnr/ppp1p1pp/8/3pPp2/8/8/PPPPKPPP/RNBQ1BNR b kq - 0 3")
+                .unwrap()
+                .hash,
+            0x652a607ca3f242c1
+        );
+    }
+
+    #[test]
+    pub fn calc_hash_test_6() {
+        assert_eq!(
+            ChessState::from_fen("rnbq1bnr/ppp1pkpp/8/3pPp2/8/8/PPPPKPPP/RNBQ1BNR w - - 0 4")
+                .unwrap()
+                .hash,
+            0x00fdd303c946bdd9
+        );
+    }
+
+    #[test]
+    pub fn calc_hash_test_7() {
+        assert_eq!(
+            ChessState::from_fen("rnbqkbnr/p1pppppp/8/8/PpP4P/8/1P1PPPP1/RNBQKBNR b KQkq c3 0 3")
+                .unwrap()
+                .hash,
+            0x3c8123ea7b067637
+        );
+    }
+
+    #[test]
+    pub fn calc_hash_test_8() {
+        assert_eq!(
+            ChessState::from_fen("rnbqkbnr/p1pppppp/8/8/P6P/R1p5/1P1PPPP1/1NBQKBNR b Kkq - 0 4")
+                .unwrap()
+                .hash,
+            0x5c3f9b829b279560
+        );
+    }
+
+    #[test]
+    pub fn inc_update_test_0() {
+        let mut state =
             ChessState::from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
                 .unwrap();
-        let hash = super::Zobrist::calc_hash(&state);
-        assert_eq!(hash, 0x463b96181691fc9c);
+
+        state.make_move(&find_move(&state.gen_moves(), "e2e4").unwrap());
+        assert_eq!(state.hash, 0x823c9b50fd114196);
+        assert_eq!(Zobrist::calc_hash(&state), state.hash);
+
+        state.make_move(&find_move(&state.gen_moves(), "d7d5").unwrap());
+        assert_eq!(state.hash, 0x0756b94461c50fb0);
+        assert_eq!(Zobrist::calc_hash(&state), state.hash);
+
+        state.make_move(&find_move(&state.gen_moves(), "e4e5").unwrap());
+        assert_eq!(state.hash, 0x662fafb965db29d4);
+        assert_eq!(Zobrist::calc_hash(&state), state.hash);
+
+        state.make_move(&find_move(&state.gen_moves(), "f7f5").unwrap());
+        assert_eq!(state.hash, 0x22a48b5a8e47ff78);
+        assert_eq!(Zobrist::calc_hash(&state), state.hash);
+
+        state.make_move(&find_move(&state.gen_moves(), "e1e2").unwrap());
+        assert_eq!(state.hash, 0x652a607ca3f242c1);
+        assert_eq!(Zobrist::calc_hash(&state), state.hash);
+
+        state.make_move(&find_move(&state.gen_moves(), "e8f7").unwrap());
+        assert_eq!(state.hash, 0x00fdd303c946bdd9);
+        assert_eq!(Zobrist::calc_hash(&state), state.hash);
+    }
+
+    #[test]
+    pub fn inc_update_test_1() {
+        let mut state =
+            ChessState::from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
+                .unwrap();
+
+        state.make_move(&find_move(&state.gen_moves(), "a2a4").unwrap());
+        state.make_move(&find_move(&state.gen_moves(), "b7b5").unwrap());
+        state.make_move(&find_move(&state.gen_moves(), "h2h4").unwrap());
+        state.make_move(&find_move(&state.gen_moves(), "b5b4").unwrap());
+        state.make_move(&find_move(&state.gen_moves(), "c2c4").unwrap());
+        assert_eq!(state.hash, 0x3c8123ea7b067637);
+        assert_eq!(Zobrist::calc_hash(&state), state.hash);
+
+        state.make_move(&find_move(&state.gen_moves(), "b4c3").unwrap());
+        state.make_move(&find_move(&state.gen_moves(), "a1a3").unwrap());
+        assert_eq!(state.hash, 0x5c3f9b829b279560);
+        assert_eq!(Zobrist::calc_hash(&state), state.hash);
+    }
+
+    #[test]
+    pub fn king_castle_test() {
+        let mut state = ChessState::from_fen(
+            "r1bqkb1r/pppp1ppp/2n2n2/4p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 4 4",
+        )
+        .unwrap();
+        assert_eq!(state.hash, 0x409027d3923aeaae);
+
+        state.make_move(&find_move(&state.gen_moves(), "e1g1").unwrap());
+        assert_eq!(state.hash, 0x3ee55ce7eec931be);
+        assert_eq!(Zobrist::calc_hash(&state), state.hash);
+
+        state = ChessState::from_fen(
+            "r1bqk2r/pppp1ppp/2n2n2/2b1p3/2B1P3/2P2N2/PP1P1PPP/RNBQ1RK1 b kq - 0 5",
+        )
+        .unwrap();
+        assert_eq!(state.hash, 0xe522e024f48bd4bb);
+
+        state.make_move(&find_move(&state.gen_moves(), "e8g8").unwrap());
+        assert_eq!(state.hash, 0xef8a0d9321d23d50);
+        assert_eq!(Zobrist::calc_hash(&state), state.hash);
+    }
+
+    #[test]
+    pub fn queen_castle_test() {
+        let mut state = ChessState::from_fen(
+            "r3kbnr/pppbqppp/2np4/4p3/4P3/2NP4/PPPBQPPP/R3KBNR w KQkq - 6 6",
+        )
+        .unwrap();
+        assert_eq!(state.hash, 0x0995f25bec2c2218);
+
+        state.make_move(&find_move(&state.gen_moves(), "e1c1").unwrap());
+        assert_eq!(state.hash, 0x31b8b778bf0e2d80);
+        assert_eq!(Zobrist::calc_hash(&state), state.hash);
+
+        state.make_move(&find_move(&state.gen_moves(), "e8c8").unwrap());
+        assert_eq!(state.hash, 0x028e2226f01879ba);
+        assert_eq!(Zobrist::calc_hash(&state), state.hash);
     }
 }

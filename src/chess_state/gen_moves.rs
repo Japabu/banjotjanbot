@@ -450,8 +450,8 @@ impl ChessState {
             && self.pieces[1 + offset as usize].is_none()
             && self.pieces[2 + offset as usize].is_none()
             && self.pieces[3 + offset as usize].is_none()
-            && !self.is_square_attacked(self.turn.oppo(), 2 + offset)
-            && !self.is_square_attacked(self.turn.oppo(), 3 + offset)
+            && !self.is_square_attacked(self.turn.opposite(), 2 + offset)
+            && !self.is_square_attacked(self.turn.opposite(), 3 + offset)
         {
             moves.push(Move {
                 pt: PieceType::King,
@@ -466,8 +466,8 @@ impl ChessState {
             && !self.check
             && self.pieces[6 + offset as usize].is_none()
             && self.pieces[5 + offset as usize].is_none()
-            && !self.is_square_attacked(self.turn.oppo(), 6 + offset)
-            && !self.is_square_attacked(self.turn.oppo(), 5 + offset)
+            && !self.is_square_attacked(self.turn.opposite(), 6 + offset)
+            && !self.is_square_attacked(self.turn.opposite(), 5 + offset)
         {
             moves.push(Move {
                 pt: PieceType::King,
