@@ -126,7 +126,7 @@ impl Search {
         }
         moves.sort_by_cached_key(|m| m.static_eval());
 
-        for m in moves {
+        for m in moves.iter().rev() {
             let mut s = *state;
             s.make_move(&m);
 
