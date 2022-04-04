@@ -156,6 +156,7 @@ fn main() {
 
                 let (eval, moves) = chess_state.eval(Some(depth), None);
                 println!("{} {}", eval, fmt_moves(&moves));
+                println!("bestmove {}", moves[0]);
             }
             "gotime" => {
                 if args.len() != 1 {
@@ -173,6 +174,7 @@ fn main() {
 
                 let (eval, moves) = chess_state.eval(None, Some(Duration::from_secs(seconds)));
                 println!("{} {}", eval, fmt_moves(&moves));
+                println!("bestmove {}", moves[0]);
             }
             _ => println!("Unknown command!"),
         }

@@ -12,6 +12,7 @@ pub struct TranspositionTable {
 
 #[derive(Clone, Copy)]
 pub struct TranspositionEntry {
+    pub key: u64,
     pub depth: u32,
     pub score: i32,
     pub best_move: Option<Move>,
@@ -32,7 +33,16 @@ impl TranspositionTable {
             .read()
             .unwrap();
 
-        transposition_table.entries[state.hash as usize % TRANSPOSITION_ENTRIES]
+        let key = state.hash;
+        if let Some(entry) = transposition_table.entries[key as usize] {
+            if entry.key == key {
+                return Some(entry);
+            }
+            else {
+                println!("Collision detected!");
+            }
+        }
+        None
     }
 
     pub fn set(state: &ChessState, entry: TranspositionEntry) {

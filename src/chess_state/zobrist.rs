@@ -2,7 +2,13 @@ use std::sync::RwLock;
 
 use super::{gen_moves::Move, ChessState, PieceColor, PieceColorArray, PieceType};
 
+const CASTLE_OFFSET: PieceColorArray<usize> = PieceColorArray([0, 7 * 8]);
+
 static mut ZOBRIST: Option<RwLock<Zobrist>> = None;
+const QUEEN_CASTLE_SQUARES: PieceColorArray<[usize; 2]> =
+    PieceColorArray([[0, 4], [0 + 7 * 8, 4 + 7 * 8]]);
+const KING_CASTLE_SQUARES: PieceColorArray<[usize; 2]> =
+    PieceColorArray([[4, 7], [4 + 7 * 8, 7 + 7 * 8]]);
 pub struct Zobrist {
     piece: PieceColorArray<[[u64; 64]; 6]>,
     black_to_move: u64,
@@ -80,12 +86,75 @@ impl ChessState {
     pub fn inc_update(&mut self, m: &Move) {
         let zobrist = unsafe { ZOBRIST.as_ref() }.unwrap().read().unwrap();
 
+        self.hash ^= zobrist.black_to_move;
+
         self.hash ^= zobrist.piece[self.turn][m.pt as usize][m.from];
 
-        if let Some(p) = m.capture {
+        if let Some(p) = m.promote_to {
             self.hash ^= zobrist.piece[self.turn][p as usize][m.to];
+        } else {
+            self.hash ^= zobrist.piece[self.turn][m.pt as usize][m.to];
         }
 
-        self.hash ^= zobrist.piece[self.turn][m.pt as usize][m.to];
+        if let Some(p) = m.capture {
+            self.hash ^= zobrist.piece[self.turn.oppo()][p as usize][m.to];
+        }
+
+        if let Some(t) = self.en_passant_target {
+            self.hash ^= zobrist.en_passant[t % 8];
+        }
+
+        if let Some(t) = m.new_en_passant_target {
+            self.hash ^= zobrist.en_passant[t % 8];
+        }
+
+        if m.castle_queen {
+            let offset = CASTLE_OFFSET[self.turn];
+            self.hash ^= zobrist.piece[self.turn][PieceType::King as usize][4 + offset];
+            self.hash ^= zobrist.piece[self.turn][PieceType::King as usize][2 + offset];
+            self.hash ^= zobrist.piece[self.turn][PieceType::Rook as usize][0 + offset];
+            self.hash ^= zobrist.piece[self.turn][PieceType::Rook as usize][3 + offset];
+
+            self.hash ^= zobrist.queen_castle[self.turn];
+            if self.king_castle[self.turn] {
+                self.hash ^= zobrist.king_castle[self.turn];
+            }
+            return;
+        } else if m.castle_king {
+            let offset = CASTLE_OFFSET[self.turn];
+            self.hash ^= zobrist.piece[self.turn][PieceType::King as usize][4 + offset];
+            self.hash ^= zobrist.piece[self.turn][PieceType::King as usize][6 + offset];
+            self.hash ^= zobrist.piece[self.turn][PieceType::Rook as usize][7 + offset];
+            self.hash ^= zobrist.piece[self.turn][PieceType::Rook as usize][5 + offset];
+
+            self.hash ^= zobrist.king_castle[self.turn];
+            if self.queen_castle[self.turn] {
+                self.hash ^= zobrist.queen_castle[self.turn];
+            }
+            return;
+        }
+
+        for color in [PieceColor::White, PieceColor::Black] {
+            if self.queen_castle[color] && QUEEN_CASTLE_SQUARES[color].contains(&m.from)
+                || QUEEN_CASTLE_SQUARES[color].contains(&m.to)
+            {
+                self.hash ^= zobrist.queen_castle[color];
+            }
+
+            if self.king_castle[color] && KING_CASTLE_SQUARES[color].contains(&m.from)
+                || KING_CASTLE_SQUARES[color].contains(&m.to)
+            {
+                self.hash ^= zobrist.king_castle[color];
+            }
+        }
+
+        if m.en_passant {
+            let t = (m.to as i8
+                + match self.turn {
+                    PieceColor::White => -8,
+                    PieceColor::Black => 8,
+                }) as usize;
+            self.hash ^= zobrist.piece[self.turn.oppo()][PieceType::Pawn as usize][t];
+        }
     }
 }

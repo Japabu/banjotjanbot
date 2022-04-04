@@ -18,6 +18,8 @@ struct Search {
 }
 
 impl Search {
+    
+
     fn par_pvs(&mut self, state: &ChessState, mut alpha: i32, beta: i32, depth_left: u32) -> i32 {
         if state.halfmove_clock >= 50 {
             return 0;
@@ -37,6 +39,7 @@ impl Search {
             TranspositionTable::set(
                 &state,
                 TranspositionEntry {
+                    key: state.hash,
                     depth: depth_left,
                     score: static_score,
                     best_move: None,
@@ -69,14 +72,6 @@ impl Search {
 
         if best_score > alpha {
             if best_score >= beta {
-                TranspositionTable::set(
-                    state,
-                    TranspositionEntry {
-                        depth: depth_left,
-                        score: best_score,
-                        best_move: Some(best_move),
-                    },
-                );
                 return best_score;
             }
             alpha = best_score;
@@ -98,14 +93,6 @@ impl Search {
             }
             if score > best_score {
                 if score >= beta {
-                    TranspositionTable::set(
-                        state,
-                        TranspositionEntry {
-                            depth: depth_left,
-                            score,
-                            best_move: Some(*m),
-                        },
-                    );
                     return score;
                 }
 
@@ -117,11 +104,13 @@ impl Search {
         TranspositionTable::set(
             state,
             TranspositionEntry {
+                key: state.hash,
                 depth: depth_left,
                 score: best_score,
                 best_move: Some(best_move),
             },
         );
+
         best_score
     }
 
