@@ -62,6 +62,13 @@ impl Search {
         }
 
         let mut moves = state.gen_moves();
+        if moves.is_empty() {
+            return match state.check {
+                true => (self.start_depth - depth_left) as i32 - CHECKMATE_EVAL,
+                false => 0,
+            };
+        }
+
         if let Some(m) = best_move {
             moves.iter().position(|x| *x == m).map_or_else(
                 || panic!("best move not in moves"),
@@ -69,12 +76,6 @@ impl Search {
             );
         }
 
-        if moves.is_empty() {
-            return match state.check {
-                true => (self.start_depth - depth_left) as i32 - CHECKMATE_EVAL,
-                false => 0,
-            };
-        }
         moves.sort_by_cached_key(|m| m.static_eval());
 
         for m in moves.iter().rev() {
