@@ -1,6 +1,7 @@
 use std::time::{Duration, Instant};
 
 use super::{
+    book::Book,
     gen_moves::Move,
     transposition_table::{TranspositionEntry, TranspositionTable},
     ChessState, PieceColorArray,
@@ -222,5 +223,19 @@ impl ChessState {
         }
 
         best_res
+    }
+
+    pub fn find_book_move(&self) -> Option<Move> {
+        if let Some(book_move) = Book::get(self.hash) {
+            Some(
+                *self
+                    .gen_moves()
+                    .iter()
+                    .find(|m| m.to_string() == book_move)
+                    .expect("Book move is not in moves!"),
+            )
+        } else {
+            None
+        }
     }
 }

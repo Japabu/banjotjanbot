@@ -1,8 +1,8 @@
 use std::sync::RwLock;
 
-use super::{gen_moves::Move};
+use super::gen_moves::Move;
 
-const TRANSPOSITION_ENTRIES: usize = 2 << 26;
+const TRANSPOSITION_ENTRIES: usize = 2 << 25;
 
 static mut TRANSPOSITION_TABLE: Option<RwLock<TranspositionTable>> = None;
 
@@ -37,7 +37,7 @@ impl TranspositionTable {
             if entry.key == key {
                 return Some(entry);
             } else {
-                println!("Collision detected!");
+                panic!("Collision detected!");
             }
         }
         None

@@ -1,7 +1,7 @@
 use std::{io::stdin, time::Duration};
 
 use chessai::chess_engine::{
-    gen_moves::Move, transposition_table::TranspositionTable, ChessState,
+    book::Book, gen_moves::Move, transposition_table::TranspositionTable, ChessState,
 };
 
 fn perft(state: ChessState, m: Option<&Move>, depth: u32) -> [u64; 6] {
@@ -45,9 +45,15 @@ fn fmt_moves(moves: &[Move]) -> String {
 }
 
 fn main() {
+    println!("Stupid chess engine by Jan");
+
+    println!("Loading book...");
+    Book::load("book.bin").expect("Failed to load book");
+
+    println!("Allocating memory for transposition table...");
     TranspositionTable::init();
 
-    println!("Stupid chess engine by Jan");
+    println!("Ready!");
 
     let mut chess_state = ChessState::default();
     loop {
@@ -153,6 +159,12 @@ fn main() {
                     }
                 };
 
+                if let Some(book_move) = chess_state.find_book_move() {
+                    println!("Found book move");
+                    println!("bestmove {}", book_move);
+                    continue;
+                }
+
                 let (eval, moves) = chess_state.eval(Some(depth), None);
                 println!("{} {}", eval, fmt_moves(&moves));
                 println!("bestmove {}", moves[0]);
@@ -170,6 +182,12 @@ fn main() {
                         continue;
                     }
                 };
+
+                if let Some(book_move) = chess_state.find_book_move() {
+                    println!("Found book move");
+                    println!("bestmove {}", book_move);
+                    continue;
+                }
 
                 let (eval, moves) = chess_state.eval(None, Some(Duration::from_secs(seconds)));
                 println!("{} {}", eval, fmt_moves(&moves));

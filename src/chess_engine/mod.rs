@@ -10,6 +10,7 @@ pub mod search;
 pub mod static_eval;
 pub mod transposition_table;
 pub mod zobrist;
+pub mod book;
 
 const fn si(f: u8, r: u8) -> u8 {
     8 * r + f
