@@ -45,7 +45,6 @@ fn fmt_moves(moves: &[Move]) -> String {
 }
 
 fn main() {
-    Zobrist::init();
     TranspositionTable::init();
 
     println!("Stupid chess engine by Jan");

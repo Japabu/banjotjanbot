@@ -1,4 +1,4 @@
-use super::{si, ChessState, Piece, PieceColor, PieceType};
+use super::{si, zobrist::Zobrist, ChessState, Piece, PieceColor, PieceType};
 
 impl ChessState {
     pub fn from_fen(fen: &str) -> Result<ChessState, String> {
@@ -14,78 +14,78 @@ impl ChessState {
         for c in splits[0].chars() {
             match c {
                 'r' => {
-                    s.pieces[si(f, r)] = Some(Piece {
+                    s.pieces[si(f, r) as usize] = Some(Piece {
                         c: PieceColor::Black,
                         t: PieceType::Rook,
                     })
                 }
                 'n' => {
-                    s.pieces[si(f, r)] = Some(Piece {
+                    s.pieces[si(f, r) as usize] = Some(Piece {
                         c: PieceColor::Black,
                         t: PieceType::Knight,
                     })
                 }
                 'b' => {
-                    s.pieces[si(f, r)] = Some(Piece {
+                    s.pieces[si(f, r) as usize] = Some(Piece {
                         c: PieceColor::Black,
                         t: PieceType::Bishop,
                     })
                 }
                 'q' => {
-                    s.pieces[si(f, r)] = Some(Piece {
+                    s.pieces[si(f, r) as usize] = Some(Piece {
                         c: PieceColor::Black,
                         t: PieceType::Queen,
                     })
                 }
                 'k' => {
                     let i = si(f, r);
-                    s.pieces[i] = Some(Piece {
+                    s.pieces[i as usize] = Some(Piece {
                         c: PieceColor::Black,
                         t: PieceType::King,
                     });
                     s.king_pos[PieceColor::Black] = i;
                 }
                 'p' => {
-                    s.pieces[si(f, r)] = Some(Piece {
+                    s.pieces[si(f, r) as usize] = Some(Piece {
                         c: PieceColor::Black,
                         t: PieceType::Pawn,
                     })
                 }
 
                 'R' => {
-                    s.pieces[si(f, r)] = Some(Piece {
+                    s.pieces[si(f, r) as usize] = Some(Piece {
                         c: PieceColor::White,
                         t: PieceType::Rook,
                     })
                 }
                 'N' => {
-                    s.pieces[si(f, r)] = Some(Piece {
+                    s.pieces[si(f, r) as usize] = Some(Piece {
                         c: PieceColor::White,
                         t: PieceType::Knight,
                     })
                 }
                 'B' => {
-                    s.pieces[si(f, r)] = Some(Piece {
+                    s.pieces[si(f, r) as usize] = Some(Piece {
                         c: PieceColor::White,
                         t: PieceType::Bishop,
                     })
                 }
                 'Q' => {
-                    s.pieces[si(f, r)] = Some(Piece {
+                    s.pieces[si(f, r) as usize] = Some(Piece {
                         c: PieceColor::White,
                         t: PieceType::Queen,
                     })
                 }
                 'K' => {
                     let i = si(f, r);
-                    s.pieces[i] = Some(Piece {
+                    s.pieces[i as usize] = Some(Piece {
                         c: PieceColor::White,
                         t: PieceType::King,
                     });
                     s.king_pos[PieceColor::White] = i;
                 }
                 'P' => {
-                    s.pieces[si(f, r)] = Some(Piece {
+                    s.pieces[si(f, r) as usize] = Some(Piece {
                         c: PieceColor::White,
                         t: PieceType::Pawn,
                     })
@@ -126,23 +126,23 @@ impl ChessState {
 
         s.en_passant_target = match splits[3].as_bytes() {
             [b'-'] => None,
-            [file @ b'a'..=b'h', rank @ b'1'..=b'8'] => Some(si(file - b'a', rank - b'1')),
+            [file @ b'a'..=b'h', rank @ b'1'..=b'8'] => Some(si(file - b'a', rank - b'1') as u8),
             _ => return Err("Invalid en passant target".to_string()),
         };
 
-        s.halfmove_clock = match splits[4].parse::<u32>() {
+        s.halfmove_clock = match splits[4].parse::<u8>() {
             Ok(x) => x,
             Err(_) => return Err("Invalid halfmove clock".to_string()),
         };
 
-        s.move_clock = match splits[5].parse::<u32>() {
+        s.move_clock = match splits[5].parse::<u8>() {
             Ok(x) => x,
             Err(_) => return Err("Invalid move clock".to_string()),
         };
 
         s.check = s.is_square_attacked(s.turn.oppo(), s.king_pos[s.turn]);
 
-        s.calc_hash();
+        s.hash = Zobrist::calc_hash(&s);
 
         Ok(s)
     }

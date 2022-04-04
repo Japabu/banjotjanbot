@@ -3,12 +3,12 @@ use std::fmt::{Display};
 use super::{gen_moves::Move, si, ChessState, Piece, PieceColor, PieceType};
 
 fn piece_at(s: &ChessState, f: u8, r: u8) -> String {
-    s.pieces[si(f, r)]
+    s.pieces[si(f, r) as usize]
         .as_ref()
         .map_or("+".to_string(), |x| format!("{}", x))
 }
 
-fn format_square(i: usize) -> String {
+fn format_square(i: u8) -> String {
     let (fi, ri) = super::fr(i);
 
     let f = (b'a' + fi) as char;

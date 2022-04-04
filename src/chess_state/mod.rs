@@ -1,20 +1,22 @@
 use std::ops::{Index, IndexMut};
 
+use self::zobrist::Zobrist;
+
 pub mod display;
 pub mod fen;
 pub mod gen_moves;
 pub mod make_move;
 pub mod search;
 pub mod static_eval;
-pub mod zobrist;
 pub mod transposition_table;
+pub mod zobrist;
 
-const fn si(f: u8, r: u8) -> usize {
-    return (8 * r + f) as usize;
+const fn si(f: u8, r: u8) -> u8 {
+    8 * r + f
 }
 
-const fn fr(si: usize) -> (u8, u8) {
-    return ((si & 7) as u8, (si >> 3) as u8);
+const fn fr(si: u8) -> (u8, u8) {
+    (si & 7, si >> 3)
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Hash)]
@@ -69,12 +71,12 @@ pub struct ChessState {
     turn: PieceColor,
     king_castle: PieceColorArray<bool>,
     queen_castle: PieceColorArray<bool>,
-    en_passant_target: Option<usize>,
+    en_passant_target: Option<u8>,
 
-    halfmove_clock: u32,
-    move_clock: u32,
+    halfmove_clock: u8,
+    move_clock: u8,
     check: bool,
-    king_pos: PieceColorArray<usize>,
+    king_pos: PieceColorArray<u8>,
     hash: u64,
 }
 
@@ -94,7 +96,7 @@ impl Default for ChessState {
             hash: 0,
         };
 
-        ret.calc_hash();
+        ret.hash = Zobrist::calc_hash(&ret);
         ret
     }
 }

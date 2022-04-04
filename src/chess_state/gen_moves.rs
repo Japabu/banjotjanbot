@@ -2,7 +2,7 @@ use crate::chess_state::PieceColorArray;
 
 use super::{ChessState, Piece, PieceColor, PieceType};
 
-const MAILBOX: [Option<usize>; 120] = [
+const MAILBOX: [Option<u8>; 120] = [
     None,
     None,
     None,
@@ -125,14 +125,14 @@ const MAILBOX: [Option<usize>; 120] = [
     None,
 ];
 
-const MAILBOX64: [usize; 64] = [
+const MAILBOX64: [u8; 64] = [
     21, 22, 23, 24, 25, 26, 27, 28, 31, 32, 33, 34, 35, 36, 37, 38, 41, 42, 43, 44, 45, 46, 47, 48,
     51, 52, 53, 54, 55, 56, 57, 58, 61, 62, 63, 64, 65, 66, 67, 68, 71, 72, 73, 74, 75, 76, 77, 78,
     81, 82, 83, 84, 85, 86, 87, 88, 91, 92, 93, 94, 95, 96, 97, 98,
 ];
 
-pub const fn with_offset(from: usize, offset: i8) -> Option<usize> {
-    MAILBOX[(MAILBOX64[from] as i8 + offset) as usize]
+pub const fn with_offset(from: u8, offset: i8) -> Option<u8> {
+    MAILBOX[(MAILBOX64[from as usize] as i8 + offset) as usize]
 }
 
 impl PieceType {
@@ -161,10 +161,10 @@ impl PieceType {
 #[derive(Clone, Copy, Eq)]
 pub struct Move {
     pub pt: PieceType,
-    pub from: usize,
-    pub to: usize,
+    pub from: u8,
+    pub to: u8,
     pub promote_to: Option<PieceType>,
-    pub new_en_passant_target: Option<usize>,
+    pub new_en_passant_target: Option<u8>,
     pub castle_king: bool,
     pub castle_queen: bool,
     pub en_passant: bool,
@@ -196,16 +196,16 @@ impl PartialEq for Move {
 }
 
 impl ChessState {
-    fn gen_pawn_moves(&self, from: usize, moves: &mut Vec<Move>) {
+    fn gen_pawn_moves(&self, from: u8, moves: &mut Vec<Move>) {
         let forward: i8 = match self.turn {
             PieceColor::White => 8,
             PieceColor::Black => -8,
         };
 
-        let to = (from as i8 + forward) as usize;
+        let to = (from as i8 + forward) as u8;
 
         // Advance
-        if self.pieces[to].is_none() {
+        if self.pieces[to as usize].is_none() {
             if to / 8
                 == match self.turn {
                     PieceColor::White => 7,
@@ -242,8 +242,8 @@ impl ChessState {
                     PieceColor::Black => 6,
                 }
             {
-                let to2 = (to as i8 + forward) as usize;
-                if self.pieces[to2].is_none() {
+                let to2 = (to as i8 + forward) as u8;
+                if self.pieces[to2 as usize].is_none() {
                     moves.push(Move {
                         pt: PieceType::Pawn,
                         from,
@@ -258,7 +258,7 @@ impl ChessState {
         // Capture
         for offset in [1 as i8, -1] {
             if let Some(to) = with_offset(to, offset)
-            &&  let Some(p) = self.pieces[to] && p.c != self.turn {
+            &&  let Some(p) = self.pieces[to as usize] && p.c != self.turn {
                     if to / 8
                         == match self.turn {
                             PieceColor::White => 7,
@@ -310,7 +310,7 @@ impl ChessState {
         }
     }
 
-    fn gen_non_pawn_moves(&self, p: Piece, from: usize, moves: &mut Vec<Move>) {
+    fn gen_non_pawn_moves(&self, p: Piece, from: u8, moves: &mut Vec<Move>) {
         for offset in p.t.offsets() {
             let mut to = from;
             loop {
@@ -319,7 +319,7 @@ impl ChessState {
                     None => break,
                 };
 
-                if let Some(other) = self.pieces[to] {
+                if let Some(other) = self.pieces[to as usize] {
                     if other.c != self.turn {
                         moves.push(Move {
                             pt: p.t,
@@ -346,7 +346,7 @@ impl ChessState {
         }
     }
 
-    pub fn is_square_attacked(&self, attacker: PieceColor, square: usize) -> bool {
+    pub fn is_square_attacked(&self, attacker: PieceColor, square: u8) -> bool {
         // Check if square is attacked orthogonally by a rook, queen or king
         for offset in PieceType::Rook.offsets() {
             let mut slid = false;
@@ -357,7 +357,7 @@ impl ChessState {
                     None => break,
                 };
 
-                match self.pieces[to] {
+                match self.pieces[to as usize] {
                     Some(Piece {
                         c,
                         t: PieceType::Rook | PieceType::Queen,
@@ -384,7 +384,7 @@ impl ChessState {
                     None => break,
                 };
 
-                match self.pieces[to] {
+                match self.pieces[to as usize] {
                     Some(Piece {
                         c,
                         t: PieceType::Bishop | PieceType::Queen,
@@ -408,7 +408,7 @@ impl ChessState {
                 None => continue,
             };
 
-            match self.pieces[to] {
+            match self.pieces[to as usize] {
                 Some(Piece {
                     c,
                     t: PieceType::Knight,
@@ -429,7 +429,7 @@ impl ChessState {
                 None => continue,
             };
 
-            match self.pieces[to] {
+            match self.pieces[to as usize] {
                 Some(Piece {
                     c,
                     t: PieceType::Pawn,
@@ -442,14 +442,14 @@ impl ChessState {
     }
 
     fn gen_castling_moves(&self, moves: &mut Vec<Move>) {
-        const CASTLE_OFFSET: PieceColorArray<usize> = PieceColorArray([0, 7 * 8]);
+        const CASTLE_OFFSET: PieceColorArray<u8> = PieceColorArray([0, 7 * 8]);
         let offset = CASTLE_OFFSET[self.turn];
 
         if self.queen_castle[self.turn]
             && !self.check
-            && self.pieces[1 + offset].is_none()
-            && self.pieces[2 + offset].is_none()
-            && self.pieces[3 + offset].is_none()
+            && self.pieces[1 + offset as usize].is_none()
+            && self.pieces[2 + offset as usize].is_none()
+            && self.pieces[3 + offset as usize].is_none()
             && !self.is_square_attacked(self.turn.oppo(), 2 + offset)
             && !self.is_square_attacked(self.turn.oppo(), 3 + offset)
         {
@@ -464,8 +464,8 @@ impl ChessState {
 
         if self.king_castle[self.turn]
             && !self.check
-            && self.pieces[6 + offset].is_none()
-            && self.pieces[5 + offset].is_none()
+            && self.pieces[6 + offset as usize].is_none()
+            && self.pieces[5 + offset as usize].is_none()
             && !self.is_square_attacked(self.turn.oppo(), 6 + offset)
             && !self.is_square_attacked(self.turn.oppo(), 5 + offset)
         {
@@ -482,8 +482,8 @@ impl ChessState {
     pub fn gen_moves(&self) -> Vec<Move> {
         let mut moves = Vec::<Move>::new();
 
-        for from in 0..64 {
-            if let Some(p) = self.pieces[from] {
+        for from in 0u8..64 {
+            if let Some(p) = self.pieces[from as usize] {
                 if p.c != self.turn {
                     continue;
                 }
