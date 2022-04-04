@@ -1,4 +1,4 @@
-use crate::chess_state::PieceColorArray;
+use crate::chess_engine::PieceColorArray;
 
 use super::{ChessState, Piece, PieceColor, PieceType};
 

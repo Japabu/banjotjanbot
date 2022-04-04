@@ -1001,7 +1001,7 @@ impl Zobrist {
 
 #[cfg(test)]
 mod tests {
-    use crate::chess_state::{gen_moves::Move, ChessState, zobrist::Zobrist};
+    use crate::chess_engine::{gen_moves::Move, ChessState, zobrist::Zobrist};
 
     fn find_move(moves: &[Move], m: &str) -> Option<Move> {
         moves.iter().find(|mv| mv.to_string() == m).cloned()

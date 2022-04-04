@@ -1,6 +1,6 @@
 use std::{io::stdin, time::Duration};
 
-use chessai::chess_state::{
+use chessai::chess_engine::{
     gen_moves::Move, transposition_table::TranspositionTable, ChessState,
 };
 
@@ -54,7 +54,7 @@ fn main() {
         let mut line = String::new();
         stdin().read_line(&mut line).unwrap();
 
-        let mut splits = line.trim_end().split(" ");
+        let mut splits = line.trim_end().split(' ');
         let cmd = match splits.next() {
             Some(cmd) => cmd,
             None => continue,
@@ -63,7 +63,7 @@ fn main() {
         let args = splits.collect::<Vec<_>>();
         match cmd {
             "position" => {
-                if args.len() < 1 {
+                if args.is_empty() {
                     println!("Invalid amount of arguments!");
                     continue;
                 }

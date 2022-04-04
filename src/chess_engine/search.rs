@@ -68,7 +68,7 @@ impl Search {
             );
         }
 
-        if moves.len() == 0 {
+        if moves.is_empty() {
             return match state.check {
                 true => (self.start_depth - depth_left) as i32 - CHECKMATE_EVAL,
                 false => 0,
@@ -117,7 +117,7 @@ impl Search {
         }
 
         let mut moves = state.gen_moves();
-        if moves.len() == 0 {
+        if moves.is_empty() {
             return match state.check {
                 true => (self.start_depth - depth_left) as i32 - CHECKMATE_EVAL,
                 false => 0,
@@ -134,7 +134,7 @@ impl Search {
                 return beta; // fail-hard beta-cutoff
             }
         }
-        return beta - 1; // fail-hard, return alpha
+        beta - 1 // fail-hard, return alpha
     }
 
     fn quiesce(&self, state: &ChessState, mut alpha: i32, beta: i32) -> i32 {
