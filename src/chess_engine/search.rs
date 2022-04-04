@@ -78,6 +78,10 @@ impl Search {
         moves.sort_by_cached_key(|m| m.static_eval());
 
         for m in moves.iter().rev() {
+            if Instant::now() >= self.search_end_time {
+                return 0;
+            }
+
             let mut s = *state;
             s.make_move(m);
 
@@ -102,7 +106,7 @@ impl Search {
                 key: state.hash,
                 depth: depth_left,
                 score: alpha,
-                best_move: best_move,
+                best_move,
             },
         );
 
@@ -127,6 +131,10 @@ impl Search {
         moves.sort_by_cached_key(|m| m.static_eval());
 
         for m in moves.iter().rev() {
+            if Instant::now() >= self.search_end_time {
+                return 0;
+            }
+
             let mut s = *state;
             s.make_move(&m);
 
@@ -152,6 +160,10 @@ impl Search {
         moves.sort_by_cached_key(|m| m.static_eval());
 
         for m in moves.iter().rev() {
+            if Instant::now() >= self.search_end_time {
+                return 0;
+            }
+
             let mut s = *state;
             s.make_move(m);
             let score = -self.quiesce(&s, -beta, -alpha);
