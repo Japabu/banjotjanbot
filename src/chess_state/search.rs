@@ -6,119 +6,171 @@ use super::{
     ChessState, PieceColorArray,
 };
 
-const CHECKMATE_EVAL: i32 = -1000000;
+const CHECKMATE_EVAL: i32 = 1000000;
 const MAX_SEARCH_DURATION: Duration = Duration::from_secs(31536000);
-const MAX_DEPTH: u32 = 200;
+const MAX_DEPTH: u8 = 200;
 
 const _TURN_MULT: PieceColorArray<i32> = PieceColorArray([1, -1]);
 
 struct Search {
     search_end_time: Instant,
-    start_depth: u32,
+    start_depth: u8,
 }
 
 impl Search {
-    
-
-    fn par_pvs(&mut self, state: &ChessState, mut alpha: i32, beta: i32, depth_left: u32) -> i32 {
+    fn pvs(&self, state: &ChessState, mut alpha: i32, beta: i32, depth_left: u8) -> i32 {
         if state.halfmove_clock >= 50 {
             return 0;
         }
 
-        let transposition_entry = TranspositionTable::get(state);
-        // let transposition_entry: Option<TranspositionEntry> = None;
-        if let Some(t) = transposition_entry
-        && t.depth >= depth_left {
-                return state.clock_factor(t.score);
+        if depth_left == 0 {
+            return self.quiesce(state, alpha, beta);
         }
 
-        if depth_left <= 0 {
-            // return self.quiesce(state, alpha, beta);
-            let static_score = state.static_eval();
+        let mut best_move = None;
 
-            TranspositionTable::set(
-                &state,
-                TranspositionEntry {
-                    key: state.hash,
-                    depth: depth_left,
-                    score: static_score,
-                    best_move: None,
-                },
-            );
+        let transposition_entry = TranspositionTable::get(state.hash);
+        if let Some(t) = transposition_entry {
+            if t.depth >= depth_left {
+                return t.score;
+            }
 
-            return state.clock_factor(static_score);
+            if let Some(m) = t.best_move {
+                //Try best move from transposition table
+                best_move = t.best_move;
+
+                let mut s = *state;
+                s.make_move(&m);
+                let score = -self.pvs(&s, -beta, -alpha, depth_left - 1);
+                if score >= beta {
+                    return beta;
+                }
+                if score > alpha {
+                    alpha = score;
+                    TranspositionTable::set(
+                        state.hash,
+                        TranspositionEntry {
+                            key: state.hash,
+                            depth: depth_left,
+                            score,
+                            best_move,
+                        },
+                    )
+                }
+            }
         }
 
         let mut moves = state.gen_moves();
+        if let Some(m) = best_move {
+            moves.iter().position(|x| *x == m).map_or_else(
+                || panic!("best move not in moves"),
+                |i| moves.swap_remove(i),
+            );
+        }
+
         if moves.len() == 0 {
             return match state.check {
-                true => CHECKMATE_EVAL + (self.start_depth - depth_left) as i32,
+                true => (self.start_depth - depth_left) as i32 - CHECKMATE_EVAL,
                 false => 0,
             };
         }
         moves.sort_by_cached_key(|m| m.static_eval());
 
-        let mut best_move = if let Some(t) = transposition_entry
-                            && let Some(m) = t.best_move
-                            && let Some(i) = moves.iter().rposition(|x| *x == m) {
-            moves.remove(i)
-        } else {
-            moves.pop().unwrap()
-        };
-
-        let mut s = *state;
-        s.make_move(&best_move);
-        let mut best_score = -self.par_pvs(&s, -beta, -alpha, depth_left - 1);
-
-        if best_score > alpha {
-            if best_score >= beta {
-                return best_score;
-            }
-            alpha = best_score;
-        }
-
         for m in moves.iter().rev() {
-            if Instant::now() >= self.search_end_time {
-                return 0;
-            }
-
             let mut s = *state;
             s.make_move(m);
-            let mut score = -self.par_pvs(&s, -alpha - 1, -alpha, depth_left - 1);
-            if score > alpha && score < beta {
-                score = -self.par_pvs(&s, -beta, -alpha, depth_left - 1);
-                if score > alpha {
-                    alpha = score;
-                }
-            }
-            if score > best_score {
-                if score >= beta {
-                    return score;
-                }
 
-                best_move = *m;
-                best_score = score;
+            let mut score = -self.zws(&s, -alpha, depth_left - 1);
+            if score > alpha {
+                // in fail-soft ... && score < beta ) is common
+                score = -self.pvs(&s, -beta, -alpha, depth_left - 1); // re-search
+            }
+
+            if score >= beta {
+                return beta; // fail-hard beta-cutoff
+            }
+            if score > alpha {
+                alpha = score; // alpha acts like max in MiniMax
+                best_move = Some(*m);
             }
         }
 
         TranspositionTable::set(
-            state,
+            state.hash,
             TranspositionEntry {
                 key: state.hash,
                 depth: depth_left,
-                score: best_score,
-                best_move: Some(best_move),
+                score: alpha,
+                best_move: best_move,
             },
         );
 
-        best_score
+        alpha
     }
 
-    fn best_line(&self, state: &ChessState, mut depth: u32) -> Vec<Move> {
+    // fail-hard zero window search, returns either beta-1 or beta
+    fn zws(&self, state: &ChessState, beta: i32, depth_left: u8) -> i32 {
+        // alpha == beta - 1
+        // this is either a cut- or all-node
+        if depth_left == 0 {
+            return self.quiesce(state, beta - 1, beta);
+        }
+
+        let mut moves = state.gen_moves();
+        if moves.len() == 0 {
+            return match state.check {
+                true => (self.start_depth - depth_left) as i32 - CHECKMATE_EVAL,
+                false => 0,
+            };
+        }
+        moves.sort_by_cached_key(|m| m.static_eval());
+
+        for m in moves {
+            let mut s = *state;
+            s.make_move(&m);
+
+            let score = -self.zws(&s, 1 - beta, depth_left - 1);
+            if score >= beta {
+                return beta; // fail-hard beta-cutoff
+            }
+        }
+        return beta - 1; // fail-hard, return alpha
+    }
+
+    fn quiesce(&self, state: &ChessState, mut alpha: i32, beta: i32) -> i32 {
+        let stand_pat = state.static_eval();
+        if stand_pat >= beta {
+            return beta;
+        }
+        if alpha < stand_pat {
+            alpha = stand_pat;
+        }
+
+        let mut moves = state.gen_moves();
+        moves.retain(|m| m.capture.is_some());
+        moves.sort_by_cached_key(|m| m.static_eval());
+
+        for m in moves.iter().rev() {
+            let mut s = *state;
+            s.make_move(m);
+            let score = -self.quiesce(&s, -beta, -alpha);
+
+            if score >= beta {
+                return beta;
+            }
+            if score > alpha {
+                alpha = score;
+            }
+        }
+
+        alpha
+    }
+
+    fn best_line(&self, state: &ChessState, mut depth: u8) -> Vec<Move> {
         let mut moves = Vec::new();
 
         let mut s = *state;
-        while depth > 0 && let Some(t) = TranspositionTable::get(&s) && let Some(m) = t.best_move {
+        while depth > 0 && let Some(t) = TranspositionTable::get(s.hash) && let Some(m) = t.best_move {
             moves.push(m);
             s.make_move(&m);
 
@@ -138,7 +190,7 @@ fn fmt_moves(moves: &[Move]) -> String {
 }
 
 impl ChessState {
-    pub fn eval(&self, max_depth: Option<u32>, max_duration: Option<Duration>) -> (i32, Vec<Move>) {
+    pub fn eval(&self, max_depth: Option<u8>, max_duration: Option<Duration>) -> (i32, Vec<Move>) {
         let max_depth = max_depth.unwrap_or(MAX_DEPTH);
         let max_duration = max_duration.unwrap_or(MAX_SEARCH_DURATION);
 
@@ -156,7 +208,7 @@ impl ChessState {
         let mut depth = 0;
         while depth <= max_depth {
             search.start_depth = depth;
-            let res = search.par_pvs(self, CHECKMATE_EVAL, -CHECKMATE_EVAL, depth);
+            let res = search.pvs(self, -CHECKMATE_EVAL, CHECKMATE_EVAL, depth);
 
             if Instant::now() >= search.search_end_time {
                 break;

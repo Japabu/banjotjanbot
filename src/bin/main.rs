@@ -146,7 +146,7 @@ fn main() {
                     continue;
                 }
 
-                let depth: u32 = match args[0].parse() {
+                let depth: u8 = match args[0].parse() {
                     Ok(depth) => depth,
                     _ => {
                         println!("Invalid depth!");

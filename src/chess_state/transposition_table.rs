@@ -1,6 +1,6 @@
 use std::sync::RwLock;
 
-use super::{gen_moves::Move, ChessState};
+use super::{gen_moves::Move};
 
 const TRANSPOSITION_ENTRIES: usize = 2 << 26;
 
@@ -13,7 +13,7 @@ pub struct TranspositionTable {
 #[derive(Clone, Copy)]
 pub struct TranspositionEntry {
     pub key: u64,
-    pub depth: u32,
+    pub depth: u8,
     pub score: i32,
     pub best_move: Option<Move>,
 }
@@ -27,30 +27,28 @@ impl TranspositionTable {
         }
     }
 
-    pub fn get(state: &ChessState) -> Option<TranspositionEntry> {
+    pub fn get(key: u64) -> Option<TranspositionEntry> {
         let transposition_table = unsafe { TRANSPOSITION_TABLE.as_ref() }
             .unwrap()
             .read()
             .unwrap();
 
-        let key = state.hash;
-        if let Some(entry) = transposition_table.entries[key as usize] {
+        if let Some(entry) = transposition_table.entries[key as usize % TRANSPOSITION_ENTRIES] {
             if entry.key == key {
                 return Some(entry);
-            }
-            else {
+            } else {
                 println!("Collision detected!");
             }
         }
         None
     }
 
-    pub fn set(state: &ChessState, entry: TranspositionEntry) {
+    pub fn set(key: u64, entry: TranspositionEntry) {
         let mut transposition_table = unsafe { TRANSPOSITION_TABLE.as_ref() }
             .unwrap()
             .write()
             .unwrap();
 
-        transposition_table.entries[state.hash as usize % TRANSPOSITION_ENTRIES] = Some(entry);
+        transposition_table.entries[key as usize % TRANSPOSITION_ENTRIES] = Some(entry);
     }
 }
