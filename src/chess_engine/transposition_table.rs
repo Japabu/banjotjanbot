@@ -13,9 +13,17 @@ pub struct TranspositionTable {
 #[derive(Clone, Copy)]
 pub struct TranspositionEntry {
     pub key: u64,
+    pub entry_type: TranspositionEntryType,
     pub depth: u8,
     pub score: i32,
     pub best_move: Option<Move>,
+}
+
+#[derive(Clone, Copy)]
+pub enum TranspositionEntryType {
+    LowerBound,
+    UpperBound,
+    Exact,
 }
 
 impl TranspositionTable {

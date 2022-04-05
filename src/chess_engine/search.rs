@@ -3,7 +3,7 @@ use std::time::{Duration, Instant};
 use super::{
     book::Book,
     gen_moves::Move,
-    transposition_table::{TranspositionEntry, TranspositionTable},
+    transposition_table::{TranspositionEntry, TranspositionTable, TranspositionEntryType},
     ChessState, PieceColorArray,
 };
 
@@ -52,6 +52,7 @@ impl Search {
                         state.hash,
                         TranspositionEntry {
                             key: state.hash,
+                            entry_type: TranspositionEntryType::Exact,
                             depth: depth_left,
                             score,
                             best_move,
@@ -105,6 +106,7 @@ impl Search {
             state.hash,
             TranspositionEntry {
                 key: state.hash,
+                entry_type: TranspositionEntryType::Exact, // TODO: Check
                 depth: depth_left,
                 score: alpha,
                 best_move,

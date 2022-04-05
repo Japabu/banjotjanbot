@@ -22,8 +22,8 @@ const fn fr(si: u8) -> (u8, u8) {
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Hash)]
 pub enum PieceColor {
-    White,
-    Black,
+    White = 0,
+    Black = 1,
 }
 
 impl PieceColor {
@@ -37,12 +37,12 @@ impl PieceColor {
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum PieceType {
-    Rook,
-    Knight,
-    Bishop,
-    Queen,
-    King,
-    Pawn,
+    Rook = 0,
+    Knight = 1,
+    Bishop = 2,
+    Queen = 3,
+    King = 4,
+    Pawn = 5,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
