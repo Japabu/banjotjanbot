@@ -94,10 +94,9 @@ impl Search {
                 -self.search::<{ NodeType::PV }>(&s, -beta, -alpha, depth_left - 1)
             } else {
                 let mut score =
-                    -self.search::<{ NodeType::Cut }>(&s, -alpha - 1, alpha, depth_left - 1);
+                    -self.search::<{ NodeType::Cut }>(&s, -alpha - 1, -alpha, depth_left - 1);
                 if score > alpha && score < beta {
                     score = -self.search::<{ NodeType::PV }>(&s, -beta, -alpha, depth_left - 1);
-                    // re-search
                 }
                 score
             };
@@ -213,12 +212,6 @@ impl ChessState {
 
             if Instant::now() >= search.search_end_time {
                 break;
-            }
-
-            if depth >= 3 {
-                let aspiration_window_error = 200;
-                alpha = res - aspiration_window_error;
-                beta = res + aspiration_window_error;
             }
 
             let line = search.best_line(self, depth);
