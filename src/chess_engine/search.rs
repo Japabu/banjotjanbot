@@ -28,7 +28,7 @@ enum NodeType {
 impl Search {
     fn search<const NODE_TYPE: NodeType>(
         &self,
-        state: &ChessState,
+        state: &mut ChessState,
         mut alpha: i32,
         mut beta: i32,
         depth_left: u8,
@@ -86,20 +86,21 @@ impl Search {
                 return 0;
             }
 
-            let mut s = *state;
-            s.make_move(m);
+            state.make_move(m);
 
             let score = if pv {
                 pv = false;
-                -self.search::<{ NodeType::PV }>(&s, -beta, -alpha, depth_left - 1)
+                -self.search::<{ NodeType::PV }>(state, -beta, -alpha, depth_left - 1)
             } else {
                 let mut score =
-                    -self.search::<{ NodeType::Cut }>(&s, -alpha - 1, -alpha, depth_left - 1);
+                    -self.search::<{ NodeType::Cut }>(state, -alpha - 1, -alpha, depth_left - 1);
                 if score > alpha && score < beta {
-                    score = -self.search::<{ NodeType::PV }>(&s, -beta, -alpha, depth_left - 1);
+                    score = -self.search::<{ NodeType::PV }>(state, -beta, -alpha, depth_left - 1);
                 }
                 score
             };
+
+            state.unmake_last_move();
 
             if score >= beta {
                 alpha = score;
@@ -131,7 +132,7 @@ impl Search {
         alpha
     }
 
-    fn quiesce(&self, state: &ChessState, mut alpha: i32, beta: i32) -> i32 {
+    fn quiesce(&self, state: &mut ChessState, mut alpha: i32, beta: i32) -> i32 {
         let stand_pat = state.static_eval();
         if stand_pat >= beta {
             return beta;
@@ -149,9 +150,9 @@ impl Search {
                 return 0;
             }
 
-            let mut s = *state;
-            s.make_move(m);
-            let score = -self.quiesce(&s, -beta, -alpha);
+            state.make_move(m);
+            let score = -self.quiesce(state, -beta, -alpha);
+            state.unmake_last_move();
 
             if score >= beta {
                 return beta;
@@ -167,10 +168,11 @@ impl Search {
     fn best_line(&self, state: &ChessState, mut depth: u8) -> Vec<Move> {
         let mut moves = Vec::new();
 
-        let mut s = *state;
-        while depth > 0 && let Some(t) = TranspositionTable::get(s.hash) && let Some(m) = t.best_move {
+        let mut state = state.clone();
+
+        while depth > 0 && let Some(t) = TranspositionTable::get(state.hash) && let Some(m) = t.best_move {
             moves.push(m);
-            s.make_move(&m);
+            state.make_move(&m);
 
             depth-=1;
         }
@@ -188,7 +190,11 @@ fn fmt_moves(moves: &[Move]) -> String {
 }
 
 impl ChessState {
-    pub fn eval(&self, max_depth: Option<u8>, max_duration: Option<Duration>) -> (i32, Vec<Move>) {
+    pub fn eval(
+        &mut self,
+        max_depth: Option<u8>,
+        max_duration: Option<Duration>,
+    ) -> (i32, Vec<Move>) {
         let max_depth = max_depth.unwrap_or(MAX_DEPTH);
         let max_duration = max_duration.unwrap_or(MAX_SEARCH_DURATION);
 
@@ -224,7 +230,7 @@ impl ChessState {
         best_res
     }
 
-    pub fn find_book_move(&self) -> Option<Move> {
+    pub fn find_book_move(&mut self) -> Option<Move> {
         if let Some(book_move) = Book::get(self.hash) {
             Some(
                 *self

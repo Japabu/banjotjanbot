@@ -923,7 +923,7 @@ impl Zobrist {
 
         let piece = Piece {
             c: state.turn,
-            t: m.pt,
+            t: m.piece_type,
         };
 
         hash ^= z_piece(piece, m.from);
@@ -1001,7 +1001,7 @@ impl Zobrist {
 
 #[cfg(test)]
 mod tests {
-    use crate::chess_engine::{gen_moves::Move, ChessState, zobrist::Zobrist};
+    use crate::chess_engine::{gen_moves::Move, zobrist::Zobrist, ChessState};
 
     fn find_move(moves: &[Move], m: &str) -> Option<Move> {
         moves.iter().find(|mv| mv.to_string() == m).cloned()
@@ -1103,27 +1103,33 @@ mod tests {
             ChessState::from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
                 .unwrap();
 
-        state.make_move(&find_move(&state.gen_moves(), "e2e4").unwrap());
+        let moves = state.gen_moves();
+        state.make_move(&find_move(&moves, "e2e4").unwrap());
         assert_eq!(state.hash, 0x823c9b50fd114196);
         assert_eq!(Zobrist::calc_hash(&state), state.hash);
 
-        state.make_move(&find_move(&state.gen_moves(), "d7d5").unwrap());
+        let moves = state.gen_moves();
+        state.make_move(&find_move(&moves, "d7d5").unwrap());
         assert_eq!(state.hash, 0x0756b94461c50fb0);
         assert_eq!(Zobrist::calc_hash(&state), state.hash);
 
-        state.make_move(&find_move(&state.gen_moves(), "e4e5").unwrap());
+        let moves = state.gen_moves();
+        state.make_move(&find_move(&moves, "e4e5").unwrap());
         assert_eq!(state.hash, 0x662fafb965db29d4);
         assert_eq!(Zobrist::calc_hash(&state), state.hash);
 
-        state.make_move(&find_move(&state.gen_moves(), "f7f5").unwrap());
+        let moves = state.gen_moves();
+        state.make_move(&find_move(&moves, "f7f5").unwrap());
         assert_eq!(state.hash, 0x22a48b5a8e47ff78);
         assert_eq!(Zobrist::calc_hash(&state), state.hash);
 
-        state.make_move(&find_move(&state.gen_moves(), "e1e2").unwrap());
+        let moves = state.gen_moves();
+        state.make_move(&find_move(&moves, "e1e2").unwrap());
         assert_eq!(state.hash, 0x652a607ca3f242c1);
         assert_eq!(Zobrist::calc_hash(&state), state.hash);
 
-        state.make_move(&find_move(&state.gen_moves(), "e8f7").unwrap());
+        let moves = state.gen_moves();
+        state.make_move(&find_move(&moves, "e8f7").unwrap());
         assert_eq!(state.hash, 0x00fdd303c946bdd9);
         assert_eq!(Zobrist::calc_hash(&state), state.hash);
     }
@@ -1134,16 +1140,23 @@ mod tests {
             ChessState::from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
                 .unwrap();
 
-        state.make_move(&find_move(&state.gen_moves(), "a2a4").unwrap());
-        state.make_move(&find_move(&state.gen_moves(), "b7b5").unwrap());
-        state.make_move(&find_move(&state.gen_moves(), "h2h4").unwrap());
-        state.make_move(&find_move(&state.gen_moves(), "b5b4").unwrap());
-        state.make_move(&find_move(&state.gen_moves(), "c2c4").unwrap());
+        let moves = state.gen_moves();
+        state.make_move(&find_move(&moves, "a2a4").unwrap());
+        let moves = state.gen_moves();
+        state.make_move(&find_move(&moves, "b7b5").unwrap());
+        let moves = state.gen_moves();
+        state.make_move(&find_move(&moves, "h2h4").unwrap());
+        let moves = state.gen_moves();
+        state.make_move(&find_move(&moves, "b5b4").unwrap());
+        let moves = state.gen_moves();
+        state.make_move(&find_move(&moves, "c2c4").unwrap());
         assert_eq!(state.hash, 0x3c8123ea7b067637);
         assert_eq!(Zobrist::calc_hash(&state), state.hash);
 
-        state.make_move(&find_move(&state.gen_moves(), "b4c3").unwrap());
-        state.make_move(&find_move(&state.gen_moves(), "a1a3").unwrap());
+        let moves = state.gen_moves();
+        state.make_move(&find_move(&moves, "b4c3").unwrap());
+        let moves = state.gen_moves();
+        state.make_move(&find_move(&moves, "a1a3").unwrap());
         assert_eq!(state.hash, 0x5c3f9b829b279560);
         assert_eq!(Zobrist::calc_hash(&state), state.hash);
     }
@@ -1156,7 +1169,8 @@ mod tests {
         .unwrap();
         assert_eq!(state.hash, 0x409027d3923aeaae);
 
-        state.make_move(&find_move(&state.gen_moves(), "e1g1").unwrap());
+        let moves = state.gen_moves();
+        state.make_move(&find_move(&moves, "e1g1").unwrap());
         assert_eq!(state.hash, 0x3ee55ce7eec931be);
         assert_eq!(Zobrist::calc_hash(&state), state.hash);
 
@@ -1166,24 +1180,26 @@ mod tests {
         .unwrap();
         assert_eq!(state.hash, 0xe522e024f48bd4bb);
 
-        state.make_move(&find_move(&state.gen_moves(), "e8g8").unwrap());
+        let moves = state.gen_moves();
+        state.make_move(&find_move(&moves, "e8g8").unwrap());
         assert_eq!(state.hash, 0xef8a0d9321d23d50);
         assert_eq!(Zobrist::calc_hash(&state), state.hash);
     }
 
     #[test]
     pub fn queen_castle_test() {
-        let mut state = ChessState::from_fen(
-            "r3kbnr/pppbqppp/2np4/4p3/4P3/2NP4/PPPBQPPP/R3KBNR w KQkq - 6 6",
-        )
-        .unwrap();
+        let mut state =
+            ChessState::from_fen("r3kbnr/pppbqppp/2np4/4p3/4P3/2NP4/PPPBQPPP/R3KBNR w KQkq - 6 6")
+                .unwrap();
         assert_eq!(state.hash, 0x0995f25bec2c2218);
 
-        state.make_move(&find_move(&state.gen_moves(), "e1c1").unwrap());
+        let moves = state.gen_moves();
+        state.make_move(&find_move(&moves, "e1c1").unwrap());
         assert_eq!(state.hash, 0x31b8b778bf0e2d80);
         assert_eq!(Zobrist::calc_hash(&state), state.hash);
 
-        state.make_move(&find_move(&state.gen_moves(), "e8c8").unwrap());
+        let moves = state.gen_moves();
+        state.make_move(&find_move(&moves, "e8c8").unwrap());
         assert_eq!(state.hash, 0x028e2226f01879ba);
         assert_eq!(Zobrist::calc_hash(&state), state.hash);
     }

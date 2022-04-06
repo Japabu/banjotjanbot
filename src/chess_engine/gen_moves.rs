@@ -160,7 +160,7 @@ impl PieceType {
 
 #[derive(Clone, Copy, Eq)]
 pub struct Move {
-    pub pt: PieceType,
+    pub piece_type: PieceType,
     pub from: u8,
     pub to: u8,
     pub promote_to: Option<PieceType>,
@@ -183,7 +183,7 @@ impl Default for Move {
             castle_queen: false,
             en_passant: false,
             check: false,
-            pt: PieceType::Rook,
+            piece_type: PieceType::Rook,
             capture: None,
         }
     }
@@ -220,7 +220,7 @@ impl ChessState {
                         PieceType::Queen,
                     ]
                     .map(|x| Move {
-                        pt: PieceType::Pawn,
+                        piece_type: PieceType::Pawn,
                         from,
                         to,
                         promote_to: Some(x),
@@ -229,7 +229,7 @@ impl ChessState {
                 )
             } else {
                 moves.push(Move {
-                    pt: PieceType::Pawn,
+                    piece_type: PieceType::Pawn,
                     from,
                     to,
                     ..Default::default()
@@ -245,7 +245,7 @@ impl ChessState {
                 let to2 = (to as i8 + forward) as u8;
                 if self.pieces[to2 as usize].is_none() {
                     moves.push(Move {
-                        pt: PieceType::Pawn,
+                        piece_type: PieceType::Pawn,
                         from,
                         to: to2,
                         new_en_passant_target: Some(to),
@@ -273,7 +273,7 @@ impl ChessState {
                                 PieceType::Queen,
                             ]
                             .map(|x| Move {
-                                pt: PieceType::Pawn,
+                                piece_type: PieceType::Pawn,
                                 from,
                                 to,
                                 capture: Some(p.t),
@@ -283,7 +283,7 @@ impl ChessState {
                         )
                     } else {
                         moves.push(Move {
-                            pt: PieceType::Pawn,
+                            piece_type: PieceType::Pawn,
                             from,
                             to,
                             capture: Some(p.t),
@@ -298,7 +298,7 @@ impl ChessState {
             for offset in [1 as i8, -1] {
                 if with_offset(to, offset) == Some(en_passant_target) {
                     moves.push(Move {
-                        pt: PieceType::Pawn,
+                        piece_type: PieceType::Pawn,
                         from,
                         to: en_passant_target,
                         capture: Some(PieceType::Pawn),
@@ -322,7 +322,7 @@ impl ChessState {
                 if let Some(other) = self.pieces[to as usize] {
                     if other.c != self.turn {
                         moves.push(Move {
-                            pt: p.t,
+                            piece_type: p.t,
                             from,
                             to,
                             capture: Some(other.t),
@@ -333,7 +333,7 @@ impl ChessState {
                 }
 
                 moves.push(Move {
-                    pt: p.t,
+                    piece_type: p.t,
                     from,
                     to,
                     ..Default::default()
@@ -454,7 +454,7 @@ impl ChessState {
             && !self.is_square_attacked(self.turn.opposite(), 3 + offset)
         {
             moves.push(Move {
-                pt: PieceType::King,
+                piece_type: PieceType::King,
                 from: 4 + offset,
                 to: 2 + offset,
                 castle_queen: true,
@@ -470,7 +470,7 @@ impl ChessState {
             && !self.is_square_attacked(self.turn.opposite(), 5 + offset)
         {
             moves.push(Move {
-                pt: PieceType::King,
+                piece_type: PieceType::King,
                 castle_king: true,
                 from: 4 + offset,
                 to: 6 + offset,
@@ -479,7 +479,7 @@ impl ChessState {
         }
     }
 
-    pub fn gen_moves(&self) -> Vec<Move> {
+    pub fn gen_moves(&mut self) -> Vec<Move> {
         let mut moves = Vec::<Move>::new();
 
         for from in 0u8..64 {
@@ -499,14 +499,16 @@ impl ChessState {
 
         // Remove moves that would put the king in check and update whether the move is a check
         moves.retain_mut(|m| {
-            let mut s = *self;
-            s.make_move(m);
+            self.make_move(m);
 
-            if s.is_square_attacked(s.turn, s.king_pos[self.turn]) {
+            if self.is_square_attacked(self.turn, self.king_pos[self.turn.opposite()]) {
+                self.unmake_last_move();
                 return false;
             }
 
-            m.check = s.is_square_attacked(self.turn, s.king_pos[s.turn]);
+            m.check = self.is_square_attacked(self.turn.opposite(), self.king_pos[self.turn]);
+
+            self.unmake_last_move();
 
             true
         });

@@ -200,7 +200,7 @@ impl Move {
         let mut v = 0;
 
         if let Some(t) = self.capture {
-            v += LVA_MVV[self.pt as usize][t as usize];
+            v += LVA_MVV[self.piece_type as usize][t as usize];
         }
 
         if self.check {

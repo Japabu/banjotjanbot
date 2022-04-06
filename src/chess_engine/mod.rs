@@ -1,7 +1,8 @@
 use std::ops::{Index, IndexMut};
 
-use self::zobrist::Zobrist;
+use self::{make_move::Unmove, zobrist::Zobrist};
 
+pub mod book;
 pub mod display;
 pub mod fen;
 pub mod gen_moves;
@@ -10,7 +11,6 @@ pub mod search;
 pub mod static_eval;
 pub mod transposition_table;
 pub mod zobrist;
-pub mod book;
 
 const fn si(f: u8, r: u8) -> u8 {
     8 * r + f
@@ -66,7 +66,7 @@ impl<T> IndexMut<PieceColor> for PieceColorArray<T> {
     }
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone)]
 pub struct ChessState {
     pieces: [Option<Piece>; 64],
     turn: PieceColor,
@@ -79,6 +79,8 @@ pub struct ChessState {
     check: bool,
     king_pos: PieceColorArray<u8>,
     hash: u64,
+
+    unmove_stack: Vec<Unmove>,
 }
 
 impl Default for ChessState {
@@ -95,6 +97,8 @@ impl Default for ChessState {
             halfmove_clock: 0,
             move_clock: 1,
             hash: 0,
+
+            unmove_stack: Vec::new(),
         };
 
         ret.hash = Zobrist::calc_hash(&ret);

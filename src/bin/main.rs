@@ -4,7 +4,7 @@ use chessai::chess_engine::{
     book::Book, gen_moves::Move, transposition_table::TranspositionTable, ChessState,
 };
 
-fn perft(state: ChessState, m: Option<&Move>, depth: u32) -> [u64; 6] {
+fn perft(state: &mut ChessState, m: Option<&Move>, depth: u32) -> [u64; 6] {
     if depth == 0 {
         if let Some(m) = m {
             return [
@@ -24,9 +24,10 @@ fn perft(state: ChessState, m: Option<&Move>, depth: u32) -> [u64; 6] {
         .gen_moves()
         .iter()
         .map(|m| {
-            let mut s = state;
-            s.make_move(m);
-            perft(s, Some(m), depth - 1)
+            state.make_move(m);
+            let res = perft(state, Some(m), depth - 1);
+            state.unmake_last_move();
+            res
         })
         .fold([0; 6], |mut a, x| {
             for i in 0..a.len() {
@@ -55,7 +56,7 @@ fn main() {
 
     println!("Ready!");
 
-    let mut chess_state = ChessState::default();
+    let mut state = ChessState::default();
     loop {
         let mut line = String::new();
         stdin().read_line(&mut line).unwrap();
@@ -74,7 +75,7 @@ fn main() {
                     continue;
                 }
 
-                chess_state = match args[0] {
+                state = match args[0] {
                     "startpos" => ChessState::from_fen(
                         "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
                     )
@@ -102,14 +103,14 @@ fn main() {
                 }
             }
             "d" => {
-                println!("{}", chess_state);
+                println!("{}", state);
             }
             "m" => {
-                let moves = chess_state.gen_moves();
+                let moves = state.gen_moves();
 
                 if args.len() == 1 {
                     let i: usize = args[0].parse().unwrap();
-                    chess_state.make_move(&moves[i - 1]);
+                    state.make_move(&moves[i - 1]);
                 } else {
                     for (i, m) in moves.iter().enumerate() {
                         println!("{}: {}", i + 1, m);
@@ -131,12 +132,12 @@ fn main() {
                 };
 
                 let mut a = [0; 6];
-                let moves = chess_state.gen_moves();
+                let moves = state.gen_moves();
                 for m in moves {
-                    let mut s = chess_state;
-                    s.make_move(&m);
+                    state.make_move(&m);
+                    let p = perft(&mut state, None, depth - 1);
+                    state.unmake_last_move();
 
-                    let p = perft(s, None, depth - 1);
                     println!("{}{:?}", m, p);
 
                     for i in 0..a.len() {
@@ -159,13 +160,13 @@ fn main() {
                     }
                 };
 
-                if let Some(book_move) = chess_state.find_book_move() {
-                    println!("Found book move");
-                    println!("bestmove {}", book_move);
-                    continue;
-                }
+                // if let Some(book_move) = state.find_book_move() {
+                //     println!("Found book move");
+                //     println!("bestmove {}", book_move);
+                //     continue;
+                // }
 
-                let (eval, moves) = chess_state.eval(Some(depth), None);
+                let (eval, moves) = state.eval(Some(depth), None);
                 println!("{} {}", eval, fmt_moves(&moves));
                 println!("bestmove {}", moves[0]);
             }
@@ -183,13 +184,13 @@ fn main() {
                     }
                 };
 
-                if let Some(book_move) = chess_state.find_book_move() {
+                if let Some(book_move) = state.find_book_move() {
                     println!("Found book move");
                     println!("bestmove {}", book_move);
                     continue;
                 }
 
-                let (eval, moves) = chess_state.eval(None, Some(Duration::from_secs(seconds)));
+                let (eval, moves) = state.eval(None, Some(Duration::from_secs(seconds)));
                 println!("{} {}", eval, fmt_moves(&moves));
                 println!("bestmove {}", moves[0]);
             }
