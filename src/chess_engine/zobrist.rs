@@ -1098,6 +1098,16 @@ mod tests {
     }
 
     #[test]
+    pub fn calc_hash_test_9() {
+        assert_eq!(
+            ChessState::from_fen("r3k2r/pppp1ppp/8/8/3Pp3/8/PPP1PPPP/R3K2R b KQkq d3 0 3")
+                .unwrap()
+                .hash,
+            0xb68cbd4b61a5ece2
+        );
+    }
+
+    #[test]
     pub fn inc_update_test_0() {
         let mut state =
             ChessState::from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")

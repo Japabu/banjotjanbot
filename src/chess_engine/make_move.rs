@@ -25,6 +25,7 @@ pub struct Unmove {
     to: u8,
     captured: Option<PieceType>,
     old_hash: u64,
+    en_passant: bool,
 }
 
 impl ChessState {
@@ -43,6 +44,7 @@ impl ChessState {
             to: m.to,
             captured: m.capture,
             old_hash: self.hash,
+            en_passant: m.en_passant,
         });
 
         self.hash = Zobrist::inc_update(self.hash, self, m);
@@ -186,13 +188,25 @@ impl ChessState {
             });
         }
 
-        self.pieces[unmove.to as usize] = match unmove.captured {
-            Some(t) => Some(Piece {
+        if unmove.en_passant {
+            self.pieces[(unmove.to as i8
+                + match self.turn {
+                    PieceColor::White => -8,
+                    PieceColor::Black => 8,
+                }) as usize] = Some(Piece {
                 c: self.turn.opposite(),
-                t,
-            }),
-            None => None,
-        };
+                t: PieceType::Pawn,
+            });
+            self.pieces[unmove.to as usize] = None;
+        } else {
+            self.pieces[unmove.to as usize] = match unmove.captured {
+                Some(t) => Some(Piece {
+                    c: self.turn.opposite(),
+                    t,
+                }),
+                None => None,
+            };
+        }
 
         self.pieces[unmove.from as usize] = Some(Piece {
             c: self.turn,
@@ -408,7 +422,7 @@ mod tests {
                 .unwrap()
                 .hash
         );
-        
+
         let moves = state.gen_moves();
         state.make_move(&find_move(&moves, "e8e7").unwrap());
         assert_eq!(
@@ -429,6 +443,5 @@ mod tests {
                 .unwrap()
                 .hash
         );
-
     }
 }

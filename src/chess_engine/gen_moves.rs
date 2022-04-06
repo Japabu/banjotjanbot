@@ -516,3 +516,32 @@ impl ChessState {
         moves
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::chess_engine::{zobrist::Zobrist, ChessState};
+
+    #[test]
+    fn startpos_pos_test() {
+        let mut state =
+            ChessState::from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
+                .unwrap();
+        let hash = state.hash;
+        let moves = state.gen_moves();
+        assert_eq!(moves.len(), 20);
+        assert_eq!(state.hash, hash);
+        assert_eq!(state.hash, Zobrist::calc_hash(&state));
+    }
+
+    #[test]
+    fn en_passant_target_test() {
+        let mut state =
+            ChessState::from_fen("r3k2r/pppp1ppp/8/8/3Pp3/8/PPP1PPPP/R3K2R b KQkq d3 0 3").unwrap();
+        let hash = state.hash;
+        let moves = state.gen_moves();
+        assert_eq!(moves.len(), 26);
+        assert_eq!(state.hash, hash);
+        assert_eq!(state.hash, 0xb68cbd4b61a5ece2);
+        assert_eq!(state.hash, Zobrist::calc_hash(&state));
+    }
+}
