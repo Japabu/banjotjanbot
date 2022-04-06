@@ -130,7 +130,7 @@ impl ChessState {
                 + self.king_castle[self.turn] as i32
                 - self.queen_castle[self.turn.opposite()] as i32
                 - self.king_castle[self.turn.opposite()] as i32)
-                * 10;
+                * 50;
         }
 
         material_heu + positional_heu + king_safety_heu

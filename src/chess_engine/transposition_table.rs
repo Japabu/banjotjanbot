@@ -19,7 +19,7 @@ pub struct TranspositionEntry {
     pub best_move: Option<Move>,
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 pub enum TranspositionEntryType {
     LowerBound,
     UpperBound,
@@ -44,8 +44,6 @@ impl TranspositionTable {
         if let Some(entry) = transposition_table.entries[key as usize % TRANSPOSITION_ENTRIES] {
             if entry.key == key {
                 return Some(entry);
-            } else {
-                panic!("Collision detected!");
             }
         }
         None

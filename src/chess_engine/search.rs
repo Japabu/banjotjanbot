@@ -3,7 +3,7 @@ use std::time::{Duration, Instant};
 use super::{
     book::Book,
     gen_moves::Move,
-    transposition_table::{TranspositionEntry, TranspositionTable, TranspositionEntryType},
+    transposition_table::{TranspositionEntry, TranspositionEntryType, TranspositionTable},
     ChessState, PieceColorArray,
 };
 
@@ -18,8 +18,29 @@ struct Search {
     start_depth: u8,
 }
 
+#[derive(PartialEq, Eq)]
+enum NodeType {
+    Root,
+    PV,
+    Cut,
+}
+
 impl Search {
-    fn pvs(&self, state: &ChessState, mut alpha: i32, beta: i32, depth_left: u8) -> i32 {
+    fn search<const NODE_TYPE: NodeType>(
+        &self,
+        state: &ChessState,
+        mut alpha: i32,
+        mut beta: i32,
+        depth_left: u8,
+    ) -> i32 {
+        let mut moves = state.gen_moves();
+        if moves.is_empty() {
+            return match state.check {
+                true => (self.start_depth - depth_left) as i32 - CHECKMATE_EVAL,
+                false => 0,
+            };
+        }
+
         if state.halfmove_clock >= 50 {
             return 0;
         }
@@ -28,57 +49,38 @@ impl Search {
             return self.quiesce(state, alpha, beta);
         }
 
+        let start_alpha = alpha;
         let mut best_move = None;
 
-        let transposition_entry = TranspositionTable::get(state.hash);
-        if let Some(t) = transposition_entry {
-            if t.depth >= depth_left {
-                return t.score;
-            }
-
-            if let Some(m) = t.best_move {
-                //Try best move from transposition table
-                best_move = t.best_move;
-
-                let mut s = *state;
-                s.make_move(&m);
-                let score = -self.pvs(&s, -beta, -alpha, depth_left - 1);
-                if score >= beta {
-                    return beta;
+        if let Some(transposition_entry) = TranspositionTable::get(state.hash) {
+            if transposition_entry.depth >= depth_left {
+                match transposition_entry.entry_type {
+                    TranspositionEntryType::Exact => return transposition_entry.score,
+                    TranspositionEntryType::LowerBound => {
+                        alpha = i32::max(alpha, transposition_entry.score)
+                    }
+                    TranspositionEntryType::UpperBound => {
+                        beta = i32::min(beta, transposition_entry.score)
+                    }
                 }
-                if score > alpha {
-                    alpha = score;
-                    TranspositionTable::set(
-                        state.hash,
-                        TranspositionEntry {
-                            key: state.hash,
-                            entry_type: TranspositionEntryType::Exact,
-                            depth: depth_left,
-                            score,
-                            best_move,
-                        },
-                    )
+
+                if alpha >= beta {
+                    return transposition_entry.score;
                 }
             }
+
+            best_move = transposition_entry.best_move;
         }
 
-        let mut moves = state.gen_moves();
-        if moves.is_empty() {
-            return match state.check {
-                true => (self.start_depth - depth_left) as i32 - CHECKMATE_EVAL,
-                false => 0,
-            };
-        }
+        moves.sort_by_cached_key(|m| {
+            if Some(*m) == best_move {
+                CHECKMATE_EVAL
+            } else {
+                m.static_eval()
+            }
+        });
 
-        if let Some(m) = best_move {
-            moves.iter().position(|x| *x == m).map_or_else(
-                || panic!("best move not in moves"),
-                |i| moves.swap_remove(i),
-            );
-        }
-
-        moves.sort_by_cached_key(|m| m.static_eval());
-
+        let mut pv = NODE_TYPE != NodeType::Cut;
         for m in moves.iter().rev() {
             if Instant::now() >= self.search_end_time {
                 return 0;
@@ -87,17 +89,25 @@ impl Search {
             let mut s = *state;
             s.make_move(m);
 
-            let mut score = -self.zws(&s, -alpha, depth_left - 1);
-            if score > alpha {
-                // in fail-soft ... && score < beta ) is common
-                score = -self.pvs(&s, -beta, -alpha, depth_left - 1); // re-search
-            }
+            let score = if pv {
+                pv = false;
+                -self.search::<{ NodeType::PV }>(&s, -beta, -alpha, depth_left - 1)
+            } else {
+                let mut score =
+                    -self.search::<{ NodeType::Cut }>(&s, -alpha - 1, alpha, depth_left - 1);
+                if score > alpha && score < beta {
+                    score = -self.search::<{ NodeType::PV }>(&s, -beta, -alpha, depth_left - 1);
+                    // re-search
+                }
+                score
+            };
 
             if score >= beta {
-                return beta; // fail-hard beta-cutoff
+                alpha = score;
+                break;
             }
             if score > alpha {
-                alpha = score; // alpha acts like max in MiniMax
+                alpha = score;
                 best_move = Some(*m);
             }
         }
@@ -106,7 +116,13 @@ impl Search {
             state.hash,
             TranspositionEntry {
                 key: state.hash,
-                entry_type: TranspositionEntryType::Exact, // TODO: Check
+                entry_type: if alpha <= start_alpha {
+                    TranspositionEntryType::UpperBound
+                } else if alpha >= beta {
+                    TranspositionEntryType::LowerBound
+                } else {
+                    TranspositionEntryType::Exact
+                },
                 depth: depth_left,
                 score: alpha,
                 best_move,
@@ -114,39 +130,6 @@ impl Search {
         );
 
         alpha
-    }
-
-    // fail-hard zero window search, returns either beta-1 or beta
-    fn zws(&self, state: &ChessState, beta: i32, depth_left: u8) -> i32 {
-        // alpha == beta - 1
-        // this is either a cut- or all-node
-        if depth_left == 0 {
-            return self.quiesce(state, beta - 1, beta);
-        }
-
-        let mut moves = state.gen_moves();
-        if moves.is_empty() {
-            return match state.check {
-                true => (self.start_depth - depth_left) as i32 - CHECKMATE_EVAL,
-                false => 0,
-            };
-        }
-        moves.sort_by_cached_key(|m| m.static_eval());
-
-        for m in moves.iter().rev() {
-            if Instant::now() >= self.search_end_time {
-                return 0;
-            }
-
-            let mut s = *state;
-            s.make_move(&m);
-
-            let score = -self.zws(&s, 1 - beta, depth_left - 1);
-            if score >= beta {
-                return beta; // fail-hard beta-cutoff
-            }
-        }
-        beta - 1 // fail-hard, return alpha
     }
 
     fn quiesce(&self, state: &ChessState, mut alpha: i32, beta: i32) -> i32 {
@@ -222,12 +205,20 @@ impl ChessState {
         };
 
         let mut depth = 0;
+        let mut alpha = -CHECKMATE_EVAL;
+        let mut beta = CHECKMATE_EVAL;
         while depth <= max_depth {
             search.start_depth = depth;
-            let res = search.pvs(self, -CHECKMATE_EVAL, CHECKMATE_EVAL, depth);
+            let res = search.search::<{ NodeType::Root }>(self, alpha, beta, depth);
 
             if Instant::now() >= search.search_end_time {
                 break;
+            }
+
+            if depth >= 3 {
+                let aspiration_window_error = 200;
+                alpha = res - aspiration_window_error;
+                beta = res + aspiration_window_error;
             }
 
             let line = search.best_line(self, depth);
