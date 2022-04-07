@@ -19,3 +19,14 @@ Fix the pv being broken once a new best move has been found:
     7 35 e2e4 b8c6 g1f3 g8f6 e4e5      <-----------
     8 0 e2e4 b8c6 g1f3 g8f6 e4e5 f6g4 d2d4 d7d5 
     0 e2e4 b8c6 g1f3 g8f6 e4e5 f6g4 d2d4 d7d5 
+
+
+Fix stalemate 8/8/2R5/2Q5/k7/6P1/P4P1P/6K1 w - - 3 52 and also the eval:
+    go 4
+    0 1780
+    1 1830 c5d4
+    2 1000000 c5d4 a4b5
+    3 1000000 c5d4 a4b5 c6b6
+    4 1000000 c5d4 a4b5 c6c7 b5a6
+    1000000 c5d4 a4b5 c6c7 b5a6
+    bestmove c5d4

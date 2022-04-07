@@ -34,10 +34,13 @@ impl Search {
         depth_left: i32,
         ply: u32,
     ) -> i32 {
+        // Respect draws by the 50 move rule
         if state.halfmove_clock >= 50 {
             return 0;
         }
 
+        // If we have reached the maximum depth do a quiesce search
+        // The quiesce search then continues infinitely until no more captures are possible with a depth_left < 0
         if NODE_TYPE != NodeType::Quiesce && depth_left == 0 {
             return self.search::<{ NodeType::Quiesce }>(
                 state,
@@ -51,8 +54,14 @@ impl Search {
         let start_alpha = alpha;
         let mut best_move = None;
 
+        // If we are doing a quiesce search perform optimisations such as
+        // standing pat and delta pruning
         if NODE_TYPE == NodeType::Quiesce {
             let stand_pat = state.static_eval();
+
+            if stand_pat >= beta {
+                return beta;
+            }
 
             // Delta pruning
             let delta = 900;
@@ -60,15 +69,12 @@ impl Search {
                 return alpha;
             }
 
-            if stand_pat > alpha {
-                if stand_pat >= beta {
-                    return stand_pat;
-                }
-
+            if alpha < stand_pat {
                 alpha = stand_pat;
             }
         }
 
+        // Check if the current state is in the transposition table
         if let Some(transposition_entry) = TranspositionTable::get(state.hash) {
             if transposition_entry.depth >= depth_left {
                 match transposition_entry.entry_type {
@@ -86,15 +92,19 @@ impl Search {
                 }
             }
 
+            // Get the best move from the latest transposition table entry
             best_move = transposition_entry.best_move;
         }
 
+        // Generate pseudo legal moves because we can easily check if a move was legal in the search
         let mut moves = state.gen_pseudo_legal_moves();
 
+        // If we are doing a quiesce search then only look at captures
         if NODE_TYPE == NodeType::Quiesce {
             moves.retain(|m| m.capture.is_some());
         }
 
+        // Sort moves by score and put the best move first
         moves.sort_by_cached_key(|m| {
             if Some(*m) == best_move {
                 CHECKMATE_EVAL
@@ -124,8 +134,10 @@ impl Search {
             } else {
                 if pv {
                     pv = false;
+                    // The first child node of a pv node is also a pv node
                     -self.search::<{ NodeType::PV }>(state, -beta, -alpha, depth_left - 1, ply + 1)
                 } else {
+                    // All other nodes are cut nodes
                     let mut score = -self.search::<{ NodeType::Cut }>(
                         state,
                         -alpha - 1,
@@ -133,6 +145,8 @@ impl Search {
                         depth_left - 1,
                         ply + 1,
                     );
+
+                    // Do a re-search if the score looks promising
                     if score > alpha && score < beta {
                         score = -self.search::<{ NodeType::PV }>(
                             state,
@@ -158,14 +172,13 @@ impl Search {
             }
         }
 
+        // If we are not doing a quiesce search and we have not had any legal moves then
+        // it is either a mate or a stalemate
         if NODE_TYPE != NodeType::Quiesce && !had_legal_move {
-            // If we had no legal moves, we are in checkmate or stalemate
-            if moves.is_empty() {
-                return match state.check[state.turn] {
-                    true => -CHECKMATE_EVAL + ply as i32,
-                    false => 0,
-                };
-            }
+            return match state.check[state.turn] {
+                true => -CHECKMATE_EVAL + ply as i32,
+                false => 0,
+            };
         }
 
         TranspositionTable::set(
@@ -188,6 +201,7 @@ impl Search {
         alpha
     }
 
+    /// Extracts the best line of moves from the transposition table
     fn best_line(&self, state: &ChessState, mut depth: u32) -> Vec<Move> {
         let mut moves = Vec::new();
 
