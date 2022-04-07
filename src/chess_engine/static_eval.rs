@@ -164,7 +164,7 @@ impl ChessState {
         let total_material = my_material_value + opp_material_value;
         let material_heu = my_material_value - opp_material_value;
 
-        let is_endgame = total_material <= 1600 + 2 * PieceType::King.mat_value();
+        let is_endgame = total_material <= 2200 + 2 * PieceType::King.mat_value();
         let mut my_positional_value = 0;
         let mut opp_positional_value = 0;
         for i in 0..64 {

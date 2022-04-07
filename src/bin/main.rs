@@ -160,11 +160,11 @@ fn main() {
                     }
                 };
 
-                // if let Some(book_move) = state.find_book_move() {
-                //     println!("Found book move");
-                //     println!("bestmove {}", book_move);
-                //     continue;
-                // }
+                if let Some(book_move) = state.find_book_move() {
+                    println!("Found book move");
+                    println!("bestmove {}", book_move);
+                    continue;
+                }
 
                 let (eval, moves) = state.eval(Some(depth), None);
                 println!("{} {}", eval, fmt_moves(&moves));
