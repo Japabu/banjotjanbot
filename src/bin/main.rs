@@ -160,6 +160,24 @@ fn main() {
                     }
                 };
 
+                let (eval, moves) = state.eval(Some(depth), None);
+                println!("{} {}", eval, fmt_moves(&moves));
+                println!("bestmove {}", moves[0]);
+            }
+            "gob" => {
+                if args.len() != 1 {
+                    println!("Invalid amount of arguments!");
+                    continue;
+                }
+
+                let depth: u8 = match args[0].parse() {
+                    Ok(depth) => depth,
+                    _ => {
+                        println!("Invalid depth!");
+                        continue;
+                    }
+                };
+
                 if let Some(book_move) = state.find_book_move() {
                     println!("Found book move");
                     println!("bestmove {}", book_move);

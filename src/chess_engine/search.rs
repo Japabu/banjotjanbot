@@ -134,10 +134,17 @@ impl Search {
 
     fn quiesce(&self, state: &mut ChessState, mut alpha: i32, beta: i32) -> i32 {
         let stand_pat = state.static_eval();
-        if stand_pat >= beta {
-            return beta;
+
+        let delta = 900;
+        if stand_pat + delta < alpha {
+            return alpha;
         }
-        if alpha < stand_pat {
+
+        if stand_pat > alpha {
+            if stand_pat >= beta {
+                return stand_pat;
+            }
+
             alpha = stand_pat;
         }
 
