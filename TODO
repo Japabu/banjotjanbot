@@ -30,3 +30,5 @@ Fix stalemate 8/8/2R5/2Q5/k7/6P1/P4P1P/6K1 w - - 3 52 and also the eval:
     4 1000000 c5d4 a4b5 c6c7 b5a6
     1000000 c5d4 a4b5 c6c7 b5a6
     bestmove c5d4
+
+check perft
