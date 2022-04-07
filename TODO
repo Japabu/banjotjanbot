@@ -1,10 +1,11 @@
+Bitboard
 Threat map
     - The more squares a player attacks the better the static eval
     - Dont move pieces to where a pawn can attack them
 Draw by repetition
 Pawn structure static eval
 Bishop pair static eval
-Instead of searching legal moves, search pseudo legal moves and discord the ones that put the own king in check
+Instead of searching legal moves, search pseudo legal moves and discard the ones that put the own king in check
 search(depth - 1, ply + 1)
 quiescence: depth < 0
     - Use transposition table

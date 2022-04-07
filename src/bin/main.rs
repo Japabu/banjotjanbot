@@ -13,7 +13,7 @@ fn perft(state: &mut ChessState, m: Option<&Move>, depth: u32) -> [u64; 6] {
                 m.en_passant as u64,
                 (m.castle_king || m.castle_queen) as u64,
                 m.promote_to.is_some() as u64,
-                m.check as u64,
+                0,
             ];
         } else {
             return [1, 0, 0, 0, 0, 0];
@@ -152,7 +152,7 @@ fn main() {
                     continue;
                 }
 
-                let depth: u8 = match args[0].parse() {
+                let depth: u32 = match args[0].parse() {
                     Ok(depth) => depth,
                     _ => {
                         println!("Invalid depth!");
@@ -170,7 +170,7 @@ fn main() {
                     continue;
                 }
 
-                let depth: u8 = match args[0].parse() {
+                let depth: u32 = match args[0].parse() {
                     Ok(depth) => depth,
                     _ => {
                         println!("Invalid depth!");

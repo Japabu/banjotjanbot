@@ -1,7 +1,6 @@
 use super::{
-    gen_moves::{with_offset, Move},
-    zobrist::Zobrist,
-    ChessState, Piece, PieceColor, PieceColorArray, PieceType,
+    gen_moves::Move, with_offset, zobrist::Zobrist, ChessState, Piece, PieceColor, PieceColorArray,
+    PieceType,
 };
 
 const CASTLE_OFFSET: PieceColorArray<u8> = PieceColorArray([0, 7 * 8]);
@@ -16,7 +15,7 @@ pub struct Unmove {
     old_halfmove_clock: u8,
     castle_queen: bool,
     castle_king: bool,
-    old_check: bool,
+    old_check: PieceColorArray<bool>,
     old_queen_castle: PieceColorArray<bool>,
     old_king_castle: PieceColorArray<bool>,
     old_king_pos: u8,
@@ -68,8 +67,6 @@ impl ChessState {
             }
         }
 
-        self.check = m.check;
-
         if m.piece_type == PieceType::Pawn || m.capture.is_some() {
             self.halfmove_clock = 0;
         } else {
@@ -96,6 +93,7 @@ impl ChessState {
             self.king_castle[self.turn] = false;
             self.king_pos[self.turn] = 2 + offset;
             self.turn = self.turn.opposite();
+            self.update_check();
             return;
         } else if m.castle_king {
             let offset = CASTLE_OFFSET[self.turn];
@@ -113,6 +111,7 @@ impl ChessState {
             self.king_castle[self.turn] = false;
             self.king_pos[self.turn] = 6 + offset;
             self.turn = self.turn.opposite();
+            self.update_check();
             return;
         }
 
@@ -144,6 +143,7 @@ impl ChessState {
         }
 
         self.turn = self.turn.opposite();
+        self.update_check();
     }
 
     pub fn unmake_last_move(&mut self) {

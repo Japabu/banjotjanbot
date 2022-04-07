@@ -179,7 +179,7 @@ impl ChessState {
         let positional_heu = my_positional_value - opp_positional_value;
 
         let mut king_safety_heu = 0;
-        if self.check {
+        if self.check[self.turn] {
             king_safety_heu -= 50;
         }
 
@@ -201,10 +201,6 @@ impl Move {
 
         if let Some(t) = self.capture {
             v += LVA_MVV[self.piece_type as usize][t as usize];
-        }
-
-        if self.check {
-            v += 50;
         }
 
         if self.castle_king || self.castle_queen {
@@ -231,17 +227,6 @@ mod tests {
         let eval_0 = state.static_eval();
 
         let state = ChessState::from_fen("7k/4p3/8/8/8/4P3/1K6/8 w - - 0 1").unwrap();
-        let eval_1 = state.static_eval();
-
-        assert!(eval_1 > eval_0);
-    }
-
-    #[test]
-    fn king_activity_midgame_test() {
-        let state = ChessState::from_fen("7k/4p3/5q2/3Q4/4K3/4P3/8/8 w - - 0 1").unwrap();
-        let eval_0 = state.static_eval();
-
-        let state = ChessState::from_fen("7k/4p3/5q2/3Q4/8/4P3/8/K7 w - - 0 1").unwrap();
         let eval_1 = state.static_eval();
 
         assert!(eval_1 > eval_0);

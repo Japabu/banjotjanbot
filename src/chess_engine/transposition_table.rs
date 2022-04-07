@@ -2,7 +2,7 @@ use std::sync::RwLock;
 
 use super::gen_moves::Move;
 
-const TRANSPOSITION_ENTRIES: usize = 2 << 25;
+const TRANSPOSITION_ENTRIES: usize = 2 << 26;
 
 static mut TRANSPOSITION_TABLE: Option<RwLock<TranspositionTable>> = None;
 
@@ -14,7 +14,7 @@ pub struct TranspositionTable {
 pub struct TranspositionEntry {
     pub key: u64,
     pub entry_type: TranspositionEntryType,
-    pub depth: u8,
+    pub depth: i32,
     pub score: i32,
     pub best_move: Option<Move>,
 }

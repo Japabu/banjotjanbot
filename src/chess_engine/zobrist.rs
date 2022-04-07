@@ -1,6 +1,6 @@
 use super::{
-    gen_moves::{with_offset, Move},
-    ChessState, Piece, PieceColor, PieceColorArray, PieceType,
+    gen_moves::Move,
+    ChessState, Piece, PieceColor, PieceColorArray, PieceType, with_offset,
 };
 
 const RANDOM64: [u64; 781] = [

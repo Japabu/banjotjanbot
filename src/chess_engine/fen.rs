@@ -1,6 +1,4 @@
-use super::{
-    gen_moves::with_offset, si, zobrist::Zobrist, ChessState, Piece, PieceColor, PieceType,
-};
+use super::{si, zobrist::Zobrist, ChessState, Piece, PieceColor, PieceType, with_offset};
 
 impl ChessState {
     pub fn from_fen(fen: &str) -> Result<ChessState, String> {
@@ -163,7 +161,7 @@ impl ChessState {
             Err(_) => return Err("Invalid move clock".to_string()),
         };
 
-        s.check = s.is_square_attacked(s.turn.opposite(), s.king_pos[s.turn]);
+        s.update_check();
 
         s.hash = Zobrist::calc_hash(&s);
 
