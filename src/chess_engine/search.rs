@@ -38,18 +38,14 @@ impl Search {
             return 0;
         }
 
-        if depth_left == 0 {
-            if NODE_TYPE == NodeType::Quiesce {
-                return state.static_eval();
-            } else {
-                return self.search::<{ NodeType::Quiesce }>(
-                    state,
-                    alpha,
-                    beta,
-                    depth_left - 1,
-                    ply + 1,
-                );
-            }
+        if NODE_TYPE != NodeType::Quiesce && depth_left == 0 {
+            return self.search::<{ NodeType::Quiesce }>(
+                state,
+                alpha,
+                beta,
+                depth_left - 1,
+                ply + 1,
+            );
         }
 
         let start_alpha = alpha;
@@ -123,43 +119,30 @@ impl Search {
 
             had_legal_move = true;
 
-            let score = match NODE_TYPE {
-                NodeType::Quiesce => -self.search::<{ NodeType::Quiesce }>(
-                    state,
-                    -beta,
-                    -alpha,
-                    depth_left - 1,
-                    ply + 1,
-                ),
-                _ => {
-                    if pv {
-                        pv = false;
-                        -self.search::<{ NodeType::PV }>(
+            let score = if NODE_TYPE == NodeType::Quiesce {
+                -self.search::<{ NodeType::Quiesce }>(state, -beta, -alpha, depth_left - 1, ply + 1)
+            } else {
+                if pv {
+                    pv = false;
+                    -self.search::<{ NodeType::PV }>(state, -beta, -alpha, depth_left - 1, ply + 1)
+                } else {
+                    let mut score = -self.search::<{ NodeType::Cut }>(
+                        state,
+                        -alpha - 1,
+                        -alpha,
+                        depth_left - 1,
+                        ply + 1,
+                    );
+                    if score > alpha && score < beta {
+                        score = -self.search::<{ NodeType::PV }>(
                             state,
                             -beta,
                             -alpha,
                             depth_left - 1,
                             ply + 1,
-                        )
-                    } else {
-                        let mut score = -self.search::<{ NodeType::Cut }>(
-                            state,
-                            -alpha - 1,
-                            -alpha,
-                            depth_left - 1,
-                            ply + 1,
                         );
-                        if score > alpha && score < beta {
-                            score = -self.search::<{ NodeType::PV }>(
-                                state,
-                                -beta,
-                                -alpha,
-                                depth_left - 1,
-                                ply + 1,
-                            );
-                        }
-                        score
                     }
+                    score
                 }
             };
 
@@ -176,7 +159,7 @@ impl Search {
         }
 
         if NODE_TYPE != NodeType::Quiesce && !had_legal_move {
-            // If pv is still true, then we don't have any legal moves
+            // If we had no legal moves, we are in checkmate or stalemate
             if moves.is_empty() {
                 return match state.check[state.turn] {
                     true => -CHECKMATE_EVAL + ply as i32,
