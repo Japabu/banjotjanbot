@@ -5,10 +5,6 @@ Threat map
 Draw by repetition
 Pawn structure static eval
 Bishop pair static eval
-Instead of searching legal moves, search pseudo legal moves and discard the ones that put the own king in check
-search(depth - 1, ply + 1)
-quiescence: depth < 0
-    - Use transposition table
 Internal iterative deepening for move sorting if no move from the tt was found
 Look into futility pruning / Late Move Reduction / Killer moves
 
