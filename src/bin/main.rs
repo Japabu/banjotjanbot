@@ -146,6 +146,22 @@ fn main() {
                 }
                 println!("Total: {:?}", a);
             }
+            "eval" => {
+                if args.len() != 1 {
+                    println!("Invalid amount of arguments!");
+                    continue;
+                }
+
+                let depth: u32 = match args[0].parse() {
+                    Ok(depth) => depth,
+                    _ => {
+                        println!("Invalid depth!");
+                        continue;
+                    }
+                };
+
+                println!("{}", state.eval(Some(depth), None).0);
+            }
             "go" => {
                 if args.len() != 1 {
                     println!("Invalid amount of arguments!");
