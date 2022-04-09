@@ -37,10 +37,7 @@ impl BookEntry {
             ..Default::default()
         };
 
-        Self {
-            key,
-            move_: m.to_string(),
-        }
+        Self { key, move_: m.to_string() }
     }
 }
 
@@ -81,9 +78,6 @@ impl Book {
     pub fn get(key: u64) -> Option<String> {
         let book = unsafe { BOOK.as_ref() }.unwrap().read().unwrap();
 
-        book.entries
-            .binary_search_by_key(&key, |e| e.key)
-            .ok()
-            .map(|i| book.entries[i].move_.clone())
+        book.entries.binary_search_by_key(&key, |e| e.key).ok().map(|i| book.entries[i].move_.clone())
     }
 }

@@ -1,6 +1,6 @@
 use std::ops::{Index, IndexMut};
 
-use self::{make_move::Unmove, zobrist::Zobrist};
+use self::{gen_moves::Move, make_move::Unmove, zobrist::Zobrist};
 
 pub mod book;
 pub mod display;
@@ -155,10 +155,7 @@ impl ChessState {
                         c,
                         t: PieceType::Rook | PieceType::Queen,
                     }) if c == attacker => return true,
-                    Some(Piece {
-                        c,
-                        t: PieceType::King,
-                    }) if c == attacker && !slid => return true,
+                    Some(Piece { c, t: PieceType::King }) if c == attacker && !slid => return true,
                     Some(_) => break,
                     _ => (),
                 }
@@ -182,10 +179,7 @@ impl ChessState {
                         c,
                         t: PieceType::Bishop | PieceType::Queen,
                     }) if c == attacker => return true,
-                    Some(Piece {
-                        c,
-                        t: PieceType::King,
-                    }) if c == attacker && !slid => return true,
+                    Some(Piece { c, t: PieceType::King }) if c == attacker && !slid => return true,
                     Some(_) => break,
                     _ => (),
                 }
@@ -202,10 +196,7 @@ impl ChessState {
             };
 
             match self.pieces[to as usize] {
-                Some(Piece {
-                    c,
-                    t: PieceType::Knight,
-                }) if c == attacker => return true,
+                Some(Piece { c, t: PieceType::Knight }) if c == attacker => return true,
                 _ => (),
             }
         }
@@ -223,10 +214,7 @@ impl ChessState {
             };
 
             match self.pieces[to as usize] {
-                Some(Piece {
-                    c,
-                    t: PieceType::Pawn,
-                }) if c == attacker => return true,
+                Some(Piece { c, t: PieceType::Pawn }) if c == attacker => return true,
                 _ => (),
             }
         }
@@ -235,9 +223,11 @@ impl ChessState {
     }
 
     pub fn update_check(&mut self) {
-        self.check[PieceColor::White] =
-            self.is_square_attacked_by(self.king_pos[PieceColor::White], PieceColor::Black);
-        self.check[PieceColor::Black] =
-            self.is_square_attacked_by(self.king_pos[PieceColor::Black], PieceColor::White);
+        self.check[PieceColor::White] = self.is_square_attacked_by(self.king_pos[PieceColor::White], PieceColor::Black);
+        self.check[PieceColor::Black] = self.is_square_attacked_by(self.king_pos[PieceColor::Black], PieceColor::White);
+    }
+
+    pub fn get_move(&mut self, m: &str) -> Option<Move> {
+        self.gen_moves().iter().find(|mv| mv.to_string() == m).cloned()
     }
 }

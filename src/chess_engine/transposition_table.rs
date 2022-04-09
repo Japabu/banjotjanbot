@@ -36,10 +36,7 @@ impl TranspositionTable {
     }
 
     pub fn get(key: u64) -> Option<TranspositionEntry> {
-        let transposition_table = unsafe { TRANSPOSITION_TABLE.as_ref() }
-            .unwrap()
-            .read()
-            .unwrap();
+        let transposition_table = unsafe { TRANSPOSITION_TABLE.as_ref() }.unwrap().read().unwrap();
 
         if let Some(entry) = transposition_table.entries[key as usize % TRANSPOSITION_ENTRIES] {
             if entry.key == key {
@@ -50,10 +47,7 @@ impl TranspositionTable {
     }
 
     pub fn set(key: u64, entry: TranspositionEntry) {
-        let mut transposition_table = unsafe { TRANSPOSITION_TABLE.as_ref() }
-            .unwrap()
-            .write()
-            .unwrap();
+        let mut transposition_table = unsafe { TRANSPOSITION_TABLE.as_ref() }.unwrap().write().unwrap();
 
         transposition_table.entries[key as usize % TRANSPOSITION_ENTRIES] = Some(entry);
     }

@@ -1,11 +1,9 @@
-use std::fmt::{Display};
+use std::fmt::Display;
 
 use super::{gen_moves::Move, si, ChessState, Piece, PieceColor, PieceType};
 
 fn piece_at(s: &ChessState, f: u8, r: u8) -> String {
-    s.pieces[si(f, r) as usize]
-        .as_ref()
-        .map_or("+".to_string(), |x| format!("{}", x))
+    s.pieces[si(f, r) as usize].as_ref().map_or("+".to_string(), |x| format!("{}", x))
 }
 
 fn format_square(i: u8) -> String {
@@ -80,16 +78,8 @@ impl Display for ChessState {
         writeln!(fmt, "Halfmove count: {}", self.halfmove_clock)?;
         writeln!(fmt, "Move count: {}", self.move_clock)?;
 
-        writeln!(
-            fmt,
-            "White king pos: {}",
-            format_square(self.king_pos[PieceColor::White])
-        )?;
-        write!(
-            fmt,
-            "Black king pos: {}",
-            format_square(self.king_pos[PieceColor::Black])
-        )?;
+        writeln!(fmt, "White king pos: {}", format_square(self.king_pos[PieceColor::White]))?;
+        write!(fmt, "Black king pos: {}", format_square(self.king_pos[PieceColor::Black]))?;
 
         Ok(())
     }

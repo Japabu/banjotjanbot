@@ -1,7 +1,4 @@
-use super::{
-    gen_moves::Move,
-    ChessState, Piece, PieceColor, PieceColorArray, PieceType, with_offset,
-};
+use super::{gen_moves::Move, with_offset, ChessState, Piece, PieceColor, PieceColorArray, PieceType};
 
 const RANDOM64: [u64; 781] = [
     0x9D39247E33776D41,
@@ -793,10 +790,8 @@ const RANDOM_EN_PASSANT_OFFSET: usize = 772;
 const RANDOM_TURN_OFFSET: usize = 780;
 
 const CASTLE_OFFSET: PieceColorArray<u8> = PieceColorArray([0, 7 * 8]);
-const QUEEN_CASTLE_SQUARES: PieceColorArray<[u8; 2]> =
-    PieceColorArray([[0, 4], [0 + 7 * 8, 4 + 7 * 8]]);
-const KING_CASTLE_SQUARES: PieceColorArray<[u8; 2]> =
-    PieceColorArray([[4, 7], [4 + 7 * 8, 7 + 7 * 8]]);
+const QUEEN_CASTLE_SQUARES: PieceColorArray<[u8; 2]> = PieceColorArray([[0, 4], [0 + 7 * 8, 4 + 7 * 8]]);
+const KING_CASTLE_SQUARES: PieceColorArray<[u8; 2]> = PieceColorArray([[4, 7], [4 + 7 * 8, 7 + 7 * 8]]);
 
 const fn z_piece(piece: Piece, square: u8) -> u64 {
     let mut offset_piece = match piece.t {
@@ -929,10 +924,7 @@ impl Zobrist {
         hash ^= z_piece(piece, m.from);
 
         if let Some(p) = m.promote_to {
-            let promo_piece = Piece {
-                c: state.turn,
-                t: p,
-            };
+            let promo_piece = Piece { c: state.turn, t: p };
             hash ^= z_piece(promo_piece, m.to);
         } else {
             hash ^= z_piece(piece, m.to);
@@ -967,10 +959,7 @@ impl Zobrist {
         if let Some(sq) = m.new_en_passant_target {
             for i in [-1, 1].iter().filter_map(|o| with_offset(m.to, *o)) {
                 match state.pieces[i as usize] {
-                    Some(Piece {
-                        c,
-                        t: PieceType::Pawn,
-                    }) if c == state.turn.opposite() => {
+                    Some(Piece { c, t: PieceType::Pawn }) if c == state.turn.opposite() => {
                         hash ^= z_en_passant(sq);
                         break;
                     }
@@ -980,17 +969,11 @@ impl Zobrist {
         }
 
         for color in [PieceColor::White, PieceColor::Black] {
-            if state.queen_castle[color]
-                && (QUEEN_CASTLE_SQUARES[color].contains(&m.from)
-                    || QUEEN_CASTLE_SQUARES[color].contains(&m.to))
-            {
+            if state.queen_castle[color] && (QUEEN_CASTLE_SQUARES[color].contains(&m.from) || QUEEN_CASTLE_SQUARES[color].contains(&m.to)) {
                 hash ^= z_castle_queen(color);
             }
 
-            if state.king_castle[color]
-                && (KING_CASTLE_SQUARES[color].contains(&m.from)
-                    || KING_CASTLE_SQUARES[color].contains(&m.to))
-            {
+            if state.king_castle[color] && (KING_CASTLE_SQUARES[color].contains(&m.from) || KING_CASTLE_SQUARES[color].contains(&m.to)) {
                 hash ^= z_castle_king(color);
             }
         }
@@ -1010,9 +993,7 @@ mod tests {
     #[test]
     fn calc_hash_test_0() {
         assert_eq!(
-            ChessState::from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
-                .unwrap()
-                .hash,
+            ChessState::from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1").unwrap().hash,
             0x463b96181691fc9c
         );
     }
@@ -1060,9 +1041,7 @@ mod tests {
     #[test]
     pub fn calc_hash_test_5() {
         assert_eq!(
-            ChessState::from_fen("rnbqkbnr/ppp1p1pp/8/3pPp2/8/8/PPPPKPPP/RNBQ1BNR b kq - 0 3")
-                .unwrap()
-                .hash,
+            ChessState::from_fen("rnbqkbnr/ppp1p1pp/8/3pPp2/8/8/PPPPKPPP/RNBQ1BNR b kq - 0 3").unwrap().hash,
             0x652a607ca3f242c1
         );
     }
@@ -1070,9 +1049,7 @@ mod tests {
     #[test]
     pub fn calc_hash_test_6() {
         assert_eq!(
-            ChessState::from_fen("rnbq1bnr/ppp1pkpp/8/3pPp2/8/8/PPPPKPPP/RNBQ1BNR w - - 0 4")
-                .unwrap()
-                .hash,
+            ChessState::from_fen("rnbq1bnr/ppp1pkpp/8/3pPp2/8/8/PPPPKPPP/RNBQ1BNR w - - 0 4").unwrap().hash,
             0x00fdd303c946bdd9
         );
     }
@@ -1100,18 +1077,14 @@ mod tests {
     #[test]
     pub fn calc_hash_test_9() {
         assert_eq!(
-            ChessState::from_fen("r3k2r/pppp1ppp/8/8/3Pp3/8/PPP1PPPP/R3K2R b KQkq d3 0 3")
-                .unwrap()
-                .hash,
+            ChessState::from_fen("r3k2r/pppp1ppp/8/8/3Pp3/8/PPP1PPPP/R3K2R b KQkq d3 0 3").unwrap().hash,
             0xb68cbd4b61a5ece2
         );
     }
 
     #[test]
     pub fn inc_update_test_0() {
-        let mut state =
-            ChessState::from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
-                .unwrap();
+        let mut state = ChessState::from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1").unwrap();
 
         let moves = state.gen_moves();
         state.make_move(&find_move(&moves, "e2e4").unwrap());
@@ -1146,9 +1119,7 @@ mod tests {
 
     #[test]
     pub fn inc_update_test_1() {
-        let mut state =
-            ChessState::from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
-                .unwrap();
+        let mut state = ChessState::from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1").unwrap();
 
         let moves = state.gen_moves();
         state.make_move(&find_move(&moves, "a2a4").unwrap());
@@ -1173,10 +1144,7 @@ mod tests {
 
     #[test]
     pub fn king_castle_test() {
-        let mut state = ChessState::from_fen(
-            "r1bqkb1r/pppp1ppp/2n2n2/4p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 4 4",
-        )
-        .unwrap();
+        let mut state = ChessState::from_fen("r1bqkb1r/pppp1ppp/2n2n2/4p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 4 4").unwrap();
         assert_eq!(state.hash, 0x409027d3923aeaae);
 
         let moves = state.gen_moves();
@@ -1184,10 +1152,7 @@ mod tests {
         assert_eq!(state.hash, 0x3ee55ce7eec931be);
         assert_eq!(Zobrist::calc_hash(&state), state.hash);
 
-        state = ChessState::from_fen(
-            "r1bqk2r/pppp1ppp/2n2n2/2b1p3/2B1P3/2P2N2/PP1P1PPP/RNBQ1RK1 b kq - 0 5",
-        )
-        .unwrap();
+        state = ChessState::from_fen("r1bqk2r/pppp1ppp/2n2n2/2b1p3/2B1P3/2P2N2/PP1P1PPP/RNBQ1RK1 b kq - 0 5").unwrap();
         assert_eq!(state.hash, 0xe522e024f48bd4bb);
 
         let moves = state.gen_moves();
@@ -1198,9 +1163,7 @@ mod tests {
 
     #[test]
     pub fn queen_castle_test() {
-        let mut state =
-            ChessState::from_fen("r3kbnr/pppbqppp/2np4/4p3/4P3/2NP4/PPPBQPPP/R3KBNR w KQkq - 6 6")
-                .unwrap();
+        let mut state = ChessState::from_fen("r3kbnr/pppbqppp/2np4/4p3/4P3/2NP4/PPPBQPPP/R3KBNR w KQkq - 6 6").unwrap();
         assert_eq!(state.hash, 0x0995f25bec2c2218);
 
         let moves = state.gen_moves();

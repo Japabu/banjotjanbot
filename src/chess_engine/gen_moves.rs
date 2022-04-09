@@ -77,21 +77,13 @@ impl ChessState {
                     PieceColor::Black => 0,
                 }
             {
-                moves.extend(
-                    [
-                        PieceType::Rook,
-                        PieceType::Knight,
-                        PieceType::Bishop,
-                        PieceType::Queen,
-                    ]
-                    .map(|x| Move {
-                        piece_type: PieceType::Pawn,
-                        from,
-                        to,
-                        promote_to: Some(x),
-                        ..Default::default()
-                    }),
-                )
+                moves.extend([PieceType::Rook, PieceType::Knight, PieceType::Bishop, PieceType::Queen].map(|x| Move {
+                    piece_type: PieceType::Pawn,
+                    from,
+                    to,
+                    promote_to: Some(x),
+                    ..Default::default()
+                }))
             } else {
                 moves.push(Move {
                     piece_type: PieceType::Pawn,
@@ -277,7 +269,7 @@ impl ChessState {
             self.make_move(m);
             let legal = !self.check[self.turn.opposite()];
             self.unmake_last_move();
-            
+
             legal
         });
 
@@ -291,9 +283,7 @@ mod tests {
 
     #[test]
     fn startpos_pos_test() {
-        let mut state =
-            ChessState::from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
-                .unwrap();
+        let mut state = ChessState::from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1").unwrap();
         let hash = state.hash;
         let moves = state.gen_moves();
         assert_eq!(moves.len(), 20);
@@ -303,8 +293,7 @@ mod tests {
 
     #[test]
     fn en_passant_target_test() {
-        let mut state =
-            ChessState::from_fen("r3k2r/pppp1ppp/8/8/3Pp3/8/PPP1PPPP/R3K2R b KQkq d3 0 3").unwrap();
+        let mut state = ChessState::from_fen("r3k2r/pppp1ppp/8/8/3Pp3/8/PPP1PPPP/R3K2R b KQkq d3 0 3").unwrap();
         let hash = state.hash;
         let moves = state.gen_moves();
         assert_eq!(moves.len(), 26);

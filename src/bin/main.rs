@@ -1,8 +1,6 @@
 use std::{io::stdin, time::Duration};
 
-use chessai::chess_engine::{
-    book::Book, gen_moves::Move, transposition_table::TranspositionTable, ChessState,
-};
+use chessai::chess_engine::{book::Book, gen_moves::Move, transposition_table::TranspositionTable, ChessState};
 
 fn perft(state: &mut ChessState, m: Option<&Move>, depth: u32) -> [u64; 6] {
     if depth == 0 {
@@ -54,7 +52,7 @@ fn main() {
     println!("Allocating memory for transposition table...");
     TranspositionTable::init();
 
-    println!("Ready!");
+    println!("uciok");
 
     let mut state = ChessState::default();
     loop {
@@ -76,10 +74,7 @@ fn main() {
                 }
 
                 state = match args[0] {
-                    "startpos" => ChessState::from_fen(
-                        "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
-                    )
-                    .unwrap(),
+                    "startpos" => ChessState::from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1").unwrap(),
                     "fen" => {
                         if args.len() < 2 {
                             println!("Missing fen!");
@@ -106,13 +101,11 @@ fn main() {
                 println!("{}", state);
             }
             "m" => {
-                let moves = state.gen_moves();
-
                 if args.len() == 1 {
-                    let i: usize = args[0].parse().unwrap();
-                    state.make_move(&moves[i - 1]);
+                    let mv = &state.get_move(args[0]).unwrap();
+                    state.make_move(mv);
                 } else {
-                    for (i, m) in moves.iter().enumerate() {
+                    for (i, m) in state.gen_moves().iter().enumerate() {
                         println!("{}: {}", i + 1, m);
                     }
                 }

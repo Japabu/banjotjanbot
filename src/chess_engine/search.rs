@@ -26,14 +26,7 @@ enum NodeType {
 }
 
 impl Search {
-    fn search<const NODE_TYPE: NodeType>(
-        &self,
-        state: &mut ChessState,
-        mut alpha: i32,
-        mut beta: i32,
-        depth_left: i32,
-        ply: u32,
-    ) -> i32 {
+    fn search<const NODE_TYPE: NodeType>(&self, state: &mut ChessState, mut alpha: i32, mut beta: i32, depth_left: i32, ply: u32) -> i32 {
         // Respect draws by the 50 move rule
         if state.halfmove_clock >= 50 {
             return 0;
@@ -42,13 +35,7 @@ impl Search {
         // If we have reached the maximum depth do a quiesce search
         // The quiesce search then continues infinitely until no more captures are possible with a depth_left < 0
         if NODE_TYPE != NodeType::Quiesce && depth_left == 0 {
-            return self.search::<{ NodeType::Quiesce }>(
-                state,
-                alpha,
-                beta,
-                depth_left - 1,
-                ply + 1,
-            );
+            return self.search::<{ NodeType::Quiesce }>(state, alpha, beta, depth_left - 1, ply + 1);
         }
 
         let start_alpha = alpha;
@@ -79,12 +66,8 @@ impl Search {
             if transposition_entry.depth >= depth_left {
                 match transposition_entry.entry_type {
                     TranspositionEntryType::Exact => return transposition_entry.score,
-                    TranspositionEntryType::LowerBound => {
-                        alpha = i32::max(alpha, transposition_entry.score)
-                    }
-                    TranspositionEntryType::UpperBound => {
-                        beta = i32::min(beta, transposition_entry.score)
-                    }
+                    TranspositionEntryType::LowerBound => alpha = i32::max(alpha, transposition_entry.score),
+                    TranspositionEntryType::UpperBound => beta = i32::min(beta, transposition_entry.score),
                 }
 
                 if alpha >= beta {
@@ -105,13 +88,7 @@ impl Search {
         }
 
         // Sort moves by score and put the best move first
-        moves.sort_by_cached_key(|m| {
-            if Some(*m) == best_move {
-                CHECKMATE_EVAL
-            } else {
-                m.static_eval()
-            }
-        });
+        moves.sort_by_cached_key(|m| if Some(*m) == best_move { CHECKMATE_EVAL } else { m.static_eval() });
 
         let mut had_legal_move = false;
         let mut pv = NODE_TYPE == NodeType::PV || NODE_TYPE == NodeType::Root;
@@ -138,23 +115,11 @@ impl Search {
                     -self.search::<{ NodeType::PV }>(state, -beta, -alpha, depth_left - 1, ply + 1)
                 } else {
                     // All other nodes are cut nodes
-                    let mut score = -self.search::<{ NodeType::Cut }>(
-                        state,
-                        -alpha - 1,
-                        -alpha,
-                        depth_left - 1,
-                        ply + 1,
-                    );
+                    let mut score = -self.search::<{ NodeType::Cut }>(state, -alpha - 1, -alpha, depth_left - 1, ply + 1);
 
                     // Do a re-search if the score looks promising
                     if score > alpha && score < beta {
-                        score = -self.search::<{ NodeType::PV }>(
-                            state,
-                            -beta,
-                            -alpha,
-                            depth_left - 1,
-                            ply + 1,
-                        );
+                        score = -self.search::<{ NodeType::PV }>(state, -beta, -alpha, depth_left - 1, ply + 1);
                     }
                     score
                 }
@@ -227,11 +192,7 @@ fn fmt_moves(moves: &[Move]) -> String {
 }
 
 impl ChessState {
-    pub fn eval(
-        &mut self,
-        max_depth: Option<u32>,
-        max_duration: Option<Duration>,
-    ) -> (i32, Vec<Move>) {
+    pub fn eval(&mut self, max_depth: Option<u32>, max_duration: Option<Duration>) -> (i32, Vec<Move>) {
         let max_depth = max_depth.unwrap_or(MAX_DEPTH);
         let max_duration = max_duration.unwrap_or(MAX_SEARCH_DURATION);
 

@@ -1,4 +1,4 @@
-use super::{si, zobrist::Zobrist, ChessState, Piece, PieceColor, PieceType, with_offset};
+use super::{si, with_offset, zobrist::Zobrist, ChessState, Piece, PieceColor, PieceType};
 
 impl ChessState {
     pub fn from_fen(fen: &str) -> Result<ChessState, String> {
@@ -139,10 +139,7 @@ impl ChessState {
 
             for i in [-1, 1].iter().filter_map(|o| with_offset(sq, *o)) {
                 match s.pieces[i as usize] {
-                    Some(Piece {
-                        c,
-                        t: PieceType::Pawn,
-                    }) if c == s.turn => {
+                    Some(Piece { c, t: PieceType::Pawn }) if c == s.turn => {
                         s.en_passant_target = new_en_passant_target;
                         break;
                     }
