@@ -27,8 +27,8 @@ enum NodeType {
 
 impl Search {
     fn search<const NODE_TYPE: NodeType>(&self, state: &mut ChessState, mut alpha: i32, mut beta: i32, depth_left: i32, ply: u32) -> i32 {
-        // Respect draws by the 50 move rule
-        if state.halfmove_clock >= 50 {
+        // Respect draws by the 50 move rule and by threefold repetition
+        if state.halfmove_clock >= 50 || state.is_draw_by_repetition {
             return 0;
         }
 
@@ -238,5 +238,34 @@ impl ChessState {
         } else {
             None
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn draw_by_repetition_test() {
+        TranspositionTable::init();
+
+        let mut state = ChessState::from_fen("rnb1kbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1").unwrap();
+        assert_eq!(state.is_draw_by_repetition, false);
+
+        // 1. Nh3 Nh6
+        let mv = state.get_move("g1h3").unwrap();
+        state.make_move(&mv);
+
+        let mv = state.get_move("g8h6").unwrap();
+        state.make_move(&mv);
+        assert_eq!(state.is_draw_by_repetition, false);
+
+        // 2. Ng1 Ng8
+        let mv = state.get_move("h3g1").unwrap();
+        state.make_move(&mv);
+
+        let (score, mv) = state.eval(Some(1), None);
+        assert_eq!(mv[0], state.get_move("h6g8").unwrap());
+        assert_eq!(score, 0);
     }
 }

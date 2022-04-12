@@ -102,8 +102,11 @@ fn main() {
             }
             "m" => {
                 if args.len() == 1 {
-                    let mv = &state.get_move(args[0]).unwrap();
-                    state.make_move(mv);
+                    if let Some(mv) = state.get_move(args[0]) {
+                        state.make_move(&mv);
+                    } else {
+                        println!("Invalid move!");
+                    }
                 } else {
                     for (i, m) in state.gen_moves().iter().enumerate() {
                         println!("{}: {}", i + 1, m);

@@ -161,6 +161,7 @@ impl ChessState {
         s.update_check();
 
         s.hash = Zobrist::calc_hash(&s);
+        s.increment_current_position_counter_and_update_draw_by_repetition();
 
         Ok(s)
     }

@@ -2,7 +2,8 @@ use std::sync::RwLock;
 
 use super::gen_moves::Move;
 
-const TRANSPOSITION_ENTRIES: usize = 2 << 26;
+// const TRANSPOSITION_ENTRIES: usize = 100_000_000;
+const TRANSPOSITION_ENTRIES: usize = 200_000_000;
 
 static mut TRANSPOSITION_TABLE: Option<RwLock<TranspositionTable>> = None;
 
@@ -39,9 +40,7 @@ impl TranspositionTable {
         let transposition_table = unsafe { TRANSPOSITION_TABLE.as_ref() }.unwrap().read().unwrap();
 
         if let Some(entry) = transposition_table.entries[key as usize % TRANSPOSITION_ENTRIES] {
-            if entry.key == key {
-                return Some(entry);
-            }
+            return if entry.key == key { Some(entry) } else { None };
         }
         None
     }

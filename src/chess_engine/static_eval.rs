@@ -1,3 +1,5 @@
+use rand::Rng;
+
 use super::{gen_moves::Move, ChessState, Piece, PieceColor, PieceColorArray, PieceType};
 
 #[rustfmt::skip]
@@ -240,14 +242,10 @@ impl ChessState {
 
 impl Move {
     pub fn static_eval(&self) -> i32 {
-        let mut v = 0;
+        let mut v = rand::thread_rng().gen_range(-10..=10);
 
         if let Some(t) = self.capture {
             v += LVA_MVV[self.piece_type as usize][t as usize];
-        }
-
-        if self.castle_king || self.castle_queen {
-            v += 20;
         }
 
         if let Some(t) = self.promote_to {
@@ -282,7 +280,6 @@ mod tests {
             PieceType::Bishop,
             PieceType::Knight,
             PieceType::Queen,
-            PieceType::King,
             PieceType::Pawn,
         ] {
             for victim in [PieceType::Rook, PieceType::Bishop, PieceType::Knight, PieceType::Queen, PieceType::Pawn] {

@@ -2,7 +2,6 @@ Bitboard
 Threat map
     - The more squares a player attacks the better the static eval
     - Dont move pieces to where a pawn can attack them
-Draw by repetition
 Pawn structure static eval
 Bishop pair static eval
 Internal iterative deepening for move sorting if no move from the tt was found

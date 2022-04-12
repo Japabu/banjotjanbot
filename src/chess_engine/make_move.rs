@@ -65,7 +65,7 @@ impl ChessState {
             self.halfmove_clock += 1;
         }
 
-        if self.turn == PieceColor::White {
+        if self.turn == PieceColor::Black {
             self.move_clock += 1;
         }
 
@@ -86,6 +86,7 @@ impl ChessState {
             self.king_pos[self.turn] = 2 + offset;
             self.turn = self.turn.opposite();
             self.update_check();
+            self.increment_current_position_counter_and_update_draw_by_repetition();
             return;
         } else if m.castle_king {
             let offset = CASTLE_OFFSET[self.turn];
@@ -104,6 +105,7 @@ impl ChessState {
             self.king_pos[self.turn] = 6 + offset;
             self.turn = self.turn.opposite();
             self.update_check();
+            self.increment_current_position_counter_and_update_draw_by_repetition();
             return;
         }
 
@@ -134,9 +136,12 @@ impl ChessState {
 
         self.turn = self.turn.opposite();
         self.update_check();
+        self.increment_current_position_counter_and_update_draw_by_repetition();
     }
 
     pub fn unmake_last_move(&mut self) {
+        self.decrement_current_position_counter();
+
         self.turn = self.turn.opposite();
 
         let unmove = self.unmove_stack.pop().unwrap();
@@ -148,7 +153,7 @@ impl ChessState {
         self.king_pos[self.turn] = unmove.old_king_pos;
         self.hash = unmove.old_hash;
 
-        if self.turn == PieceColor::White {
+        if self.turn == PieceColor::Black {
             self.move_clock -= 1;
         }
 
@@ -380,5 +385,20 @@ mod tests {
             state.hash,
             ChessState::from_fen("r6r/pppp1ppp/4k3/4p3/4P3/8/PPPPKPPP/R6R b - - 2 4").unwrap().hash
         );
+    }
+
+    #[test]
+    fn draw_by_repetition_test() {
+        let mut state = ChessState::from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1").unwrap();
+        let mv = state.get_move("b1c3").unwrap();
+        state.make_move(&mv);
+        let mv = state.get_move("b8c6").unwrap();
+        state.make_move(&mv);
+        assert!(!state.is_draw_by_repetition);
+        let mv = state.get_move("c3b1").unwrap();
+        state.make_move(&mv);
+        let mv = state.get_move("c6b8").unwrap();
+        state.make_move(&mv);
+        assert!(state.is_draw_by_repetition);
     }
 }

@@ -1,4 +1,7 @@
-use std::ops::{Index, IndexMut};
+use std::{
+    collections::HashMap,
+    ops::{Index, IndexMut},
+};
 
 use self::{gen_moves::Move, make_move::Unmove, zobrist::Zobrist};
 
@@ -113,6 +116,8 @@ pub struct ChessState {
     hash: u64,
 
     unmove_stack: Vec<Unmove>,
+    position_counter: HashMap<u64, u8>,
+    is_draw_by_repetition: bool,
 }
 
 impl Default for ChessState {
@@ -131,6 +136,8 @@ impl Default for ChessState {
             hash: 0,
 
             unmove_stack: Vec::new(),
+            position_counter: HashMap::new(),
+            is_draw_by_repetition: false,
         };
 
         ret.hash = Zobrist::calc_hash(&ret);
@@ -229,5 +236,20 @@ impl ChessState {
 
     pub fn get_move(&mut self, m: &str) -> Option<Move> {
         self.gen_moves().iter().find(|mv| mv.to_string() == m).cloned()
+    }
+
+    pub fn increment_current_position_counter_and_update_draw_by_repetition(&mut self) {
+        self.is_draw_by_repetition = if let Some(c) = self.position_counter.get_mut(&self.hash) {
+            *c += 1;
+            *c >= 2
+        } else {
+            self.position_counter.insert(self.hash, 1);
+            false
+        }
+    }
+
+    pub fn decrement_current_position_counter(&mut self) {
+        *self.position_counter.get_mut(&self.hash).unwrap() -= 1;
+        self.is_draw_by_repetition = false;
     }
 }

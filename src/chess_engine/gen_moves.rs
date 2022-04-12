@@ -25,7 +25,7 @@ impl PieceType {
     }
 }
 
-#[derive(Clone, Copy, Eq)]
+#[derive(Clone, Copy, Eq, Debug)]
 pub struct Move {
     pub piece_type: PieceType,
     pub from: u8,
